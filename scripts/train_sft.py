@@ -1,14 +1,41 @@
-"""SFT 训练已迁移到 ms-swift。
+#!/usr/bin/env python3
+"""Run TRL BF16 LoRA SFT for the dispute agent.
 
-请使用：scripts/train_sft_ms_swift.sh
-该脚本调用 `swift sft`，对 Qwen2.5-7B-Instruct 做 LoRA SFT。
+Usage:
+    python scripts/train_sft.py --config configs/sft.yaml --train-size 500
+    python scripts/train_sft.py --config configs/sft.yaml --fixture --max-steps 1
 """
 from __future__ import annotations
 
+import argparse
+import sys
+from pathlib import Path
 
-def main() -> None:
-    print(__doc__)
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from dispute_agent.training.train_sft import load_sft_config, train_sft
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--config", default="configs/sft.yaml")
+    parser.add_argument("--train-size", type=int, choices=[500, 1000, 1500], default=500)
+    parser.add_argument("--fixture", action="store_true")
+    parser.add_argument("--max-steps", type=int, default=1)
+    parser.add_argument("--output-dir", default=None)
+    args = parser.parse_args()
+
+    config = load_sft_config(args.config)
+    output = train_sft(
+        config,
+        train_size=args.train_size,
+        fixture=args.fixture,
+        max_steps=args.max_steps,
+        output_dir=args.output_dir,
+    )
+    print(f"SFT dry-run complete: {output}")
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())
