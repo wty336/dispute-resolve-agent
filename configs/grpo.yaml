@@ -1,0 +1,30 @@
+algorithm:
+  adv_estimator: grpo
+
+actor_rollout_ref:
+  model:
+    lora_adapter_path: checkpoints/sft/sft-1500-best
+    lora_rank: 32
+    lora_alpha: 64
+  rollout:
+    n: 4
+    tensor_model_parallel_size: 2
+    max_tokens_per_round: 384
+    max_episode_tokens: 1280
+
+trainer:
+  n_gpus_per_node: 2
+
+quantization: null
+
+curriculum:
+  phase1_tools:
+    - check_logistics
+    - check_buyer_history
+    - check_merchant_history
+  phase1_max_rounds: 3
+  phase2_max_rounds: 5
+
+monitor:
+  window: 50
+  max_zero_variance_ratio: 0.30
