@@ -27,7 +27,7 @@ from .prompting import (
     parse_action,
     parse_agent_response,
 )
-from .tools import execute_tool, format_tool_definitions, format_tool_result_message
+from .legacy_tools import execute_tool, format_tool_definitions, format_tool_result_message
 
 
 class BasePlatformAgent(ABC):

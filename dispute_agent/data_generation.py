@@ -31,7 +31,7 @@ from .prompting import (
     build_rl_user_prompt_with_tool_results,
     build_tool_loop_user_prompt,
 )
-from .tools import (
+from .legacy_tools import (
     execute_tool,
     format_tool_definitions,
     format_tool_result_message,

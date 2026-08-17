@@ -10,7 +10,7 @@ from __future__ import annotations
 import argparse
 import sys
 
-from dispute_agent.environment import DisputeEnvironment
+from dispute_agent.legacy_environment import DisputeEnvironment
 from dispute_agent.evaluate import evaluate_agents, find_best_agent, print_report_table
 from dispute_agent.oracle import OracleAgent
 from dispute_agent.platform_agent import (

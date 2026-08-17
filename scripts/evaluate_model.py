@@ -13,7 +13,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from dispute_agent.environment import DisputeEnvironment  # noqa: E402
+from dispute_agent.legacy_environment import DisputeEnvironment  # noqa: E402
 from dispute_agent.evaluate import find_best_agent, print_report_table  # noqa: E402
 from dispute_agent.oracle import OracleAgent  # noqa: E402
 from dispute_agent.platform_agent import (  # noqa: E402

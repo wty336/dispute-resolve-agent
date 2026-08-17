@@ -1,7 +1,7 @@
 """多策略长期收益对比评估。"""
 from __future__ import annotations
 
-from .environment import DisputeEnvironment, RunReport
+from .legacy_environment import DisputeEnvironment, RunReport
 from .platform_agent import BasePlatformAgent
 
 

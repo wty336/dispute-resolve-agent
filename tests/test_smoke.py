@@ -10,7 +10,7 @@ from dispute_agent.data_generation import (
     load_cases_from_jsonl,
     make_sft_tool_example,
 )
-from dispute_agent.environment import DisputeEnvironment
+from dispute_agent.legacy_environment import DisputeEnvironment
 from dispute_agent.evaluate import evaluate_agents
 from dispute_agent.oracle import OracleAgent
 from dispute_agent.platform_agent import (
@@ -20,7 +20,7 @@ from dispute_agent.platform_agent import (
     ToolLoopAgent,
 )
 from dispute_agent.reward import RewardEngine, compute_reward
-from dispute_agent.tools import execute_tool
+from dispute_agent.legacy_tools import execute_tool
 
 
 class SmokeTest(unittest.TestCase):
