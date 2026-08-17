@@ -83,15 +83,21 @@ class SmokeTest(unittest.TestCase):
         self.assertEqual(restored.order_amount, case.order_amount)
 
     def test_generate_rl_data_to_tmp(self):
+        import shutil
         import tempfile
         import os
+        from pathlib import Path
 
-        with tempfile.TemporaryDirectory() as tmp:
-            cases = generate_rl_data(5, seed=0, output_dir=tmp)
+        tmp = Path(tempfile.gettempdir()) / f"pytest-rl-{os.getpid()}"
+        tmp.mkdir(parents=True, exist_ok=False)
+        try:
+            cases = generate_rl_data(5, seed=0, output_dir=str(tmp))
             self.assertEqual(len(cases), 5)
-            loaded = load_cases_from_jsonl(os.path.join(tmp, "rl_cases.jsonl"))
+            loaded = load_cases_from_jsonl(str(tmp / "rl_cases.jsonl"))
             self.assertEqual(len(loaded), 5)
             self.assertEqual(loaded[0].case_id, cases[0].case_id)
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
 
     def test_tools_and_multi_step_sft(self):
         gen = CaseGenerator(seed=0)
@@ -123,16 +129,22 @@ class SmokeTest(unittest.TestCase):
         self.assertEqual(action.compensation, 30.0)
 
     def test_generate_sft_data_to_tmp(self):
+        import shutil
         import tempfile
         import os
+        from pathlib import Path
 
-        with tempfile.TemporaryDirectory() as tmp:
-            path = os.path.join(tmp, "sft.jsonl")
+        tmp = Path(tempfile.gettempdir()) / f"pytest-sft-{os.getpid()}"
+        tmp.mkdir(parents=True, exist_ok=False)
+        try:
+            path = str(tmp / "sft.jsonl")
             cases = generate_sft_data(3, seed=0, output_path=path, style="multi_tool")
             self.assertEqual(len(cases), 3)
             with open(path, "r", encoding="utf-8") as f:
                 lines = [line for line in f if line.strip()]
             self.assertEqual(len(lines), 3)
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
 
 
 if __name__ == "__main__":

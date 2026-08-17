@@ -1,13 +1,1 @@
-# 核心仿真：无需第三方依赖（Python 3.9+，训练推荐 3.10）
-# 推理：对接 vLLM OpenAI 兼容接口
-openai>=1.0.0
-
-# ============ 训练环境（Linux, Python 3.10, CUDA 12.4）============
-# 建议按顺序安装：
-#   pip install torch==2.5.1 --index-url https://download.pytorch.org/whl/cu124
-#   pip install vllm==0.7.3        # 与 verl 版本匹配，按需调整
-#   pip install ms-swift            # SFT（LoRA）
-#   pip install verl               # GRPO（Ray + vLLM）
-#   pip install pyarrow pandas datasets ray
-#
-# 注意：verl 与 vllm/ray 存在版本耦合，以 verl 官方推荐的组合为准。
+-e .[dev]
