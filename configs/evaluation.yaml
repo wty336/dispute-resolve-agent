@@ -1,0 +1,20 @@
+business_utility:
+  buyer_ltv: 1000.0
+  merchant_ltv: 2000.0
+  buyer_repurchase_satisfied: 0.85
+  buyer_repurchase_unsatisfied: 0.45
+  merchant_retention_satisfied: 0.90
+  merchant_retention_unsatisfied: 0.60
+  manual_review_cost: 30.0
+  review_delay_cost: 10.0
+  risk_cost: 20.0
+  reputation_gain: 10.0
+
+evaluation:
+  temperature: 0.6
+  top_p: 0.95
+  top_k: 20
+  seed: 20260817
+  models: ["rule_based", "base", "sft-500", "sft-1000", "sft-1500", "sft-1500+grpo", "oracle"]
+  bootstrap_iterations: 1000
+  bootstrap_seed: 20260817
