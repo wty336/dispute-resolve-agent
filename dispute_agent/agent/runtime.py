@@ -13,7 +13,7 @@ from dispute_agent.agent.tools import build_agent_tools
 from dispute_agent.domain.policies import MAX_ROUNDS
 
 
-def _observation_to_text(episode) -> str:
+def _observation_to_text(episode, allowed_tools: set[str] | None = None) -> str:
     obs = episode.observation
     lines = [
         f"纠纷编号：{obs.case_id}",
@@ -27,7 +27,19 @@ def _observation_to_text(episode) -> str:
         f"商家回应：{obs.merchant_response}",
         "聊天记录：" + "；".join(obs.chat_log),
         "已有证据：" + "；".join(f"{e.evidence_id}:{e.description}" for e in obs.evidence),
-        "可调用工具：check_logistics、check_buyer_history、check_merchant_history、verify_evidence、submit_decision",
+        "可调用工具：" + "、".join([
+            *(
+                name
+                for name in (
+                    "check_logistics",
+                    "check_buyer_history",
+                    "check_merchant_history",
+                    "verify_evidence",
+                )
+                if allowed_tools is None or name in allowed_tools
+            ),
+            "submit_decision",
+        ]),
     ]
     return "\n".join(lines)
 
@@ -47,8 +59,20 @@ class DisputeRuntime:
         self.http_client = http_client
         set_tracing_disabled(True)
 
-    async def run(self, episode, *, enable_thinking: bool = True):
-        tools = build_agent_tools(episode)
+    async def run(
+        self,
+        episode,
+        *,
+        enable_thinking: bool = True,
+        allowed_tools: set[str] | None = None,
+        max_rounds: int = MAX_ROUNDS,
+        max_tokens_per_round: int = 384,
+    ):
+        if max_rounds <= 0:
+            raise ValueError("max_rounds must be positive")
+        if max_tokens_per_round <= 0:
+            raise ValueError("max_tokens_per_round must be positive")
+        tools = build_agent_tools(episode, allowed_tools=allowed_tools)
         model = create_chat_model(
             base_url=self.base_url,
             api_key=self.api_key,
@@ -67,13 +91,14 @@ class DisputeRuntime:
             model_settings=ModelSettings(
                 temperature=0.6,
                 top_p=0.95,
+                max_tokens=max_tokens_per_round,
                 extra_body={"chat_template_kwargs": {"enable_thinking": enable_thinking}},
             ),
         )
         await Runner.run(
             agent,
-            input=_observation_to_text(episode),
-            max_turns=MAX_ROUNDS + 1,
+            input=_observation_to_text(episode, allowed_tools),
+            max_turns=max_rounds + 1,
         )
         if episode.terminal_decision is None:
             raise RuntimeError("agent finished without submitting a terminal decision")

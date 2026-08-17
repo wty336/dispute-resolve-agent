@@ -1,19 +1,17 @@
 """Training adapters: Agent Lightning rollout and SFT/GRPO support."""
 from .grpo_config import GRPOConfig, load_grpo_config
-from .lightning_agent import (
-    EpisodeRepository,
-    LightningRollout,
-    LightningRolloutResult,
-    LitDisputeAgent,
-)
+from .grpo_dataset import EpisodeSource, GRPODatasetBundle, GRPODatasetError, load_grpo_dataset
+from .lightning_agent import build_lightning_agent, run_dispute_rollout
 from .monitor import CollapseMonitor
 
 __all__ = [
     "CollapseMonitor",
-    "EpisodeRepository",
+    "EpisodeSource",
     "GRPOConfig",
-    "LightningRollout",
-    "LightningRolloutResult",
-    "LitDisputeAgent",
+    "GRPODatasetBundle",
+    "GRPODatasetError",
+    "build_lightning_agent",
+    "load_grpo_dataset",
     "load_grpo_config",
+    "run_dispute_rollout",
 ]

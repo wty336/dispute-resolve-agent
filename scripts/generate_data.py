@@ -15,6 +15,8 @@ import json
 import sys
 from pathlib import Path
 
+import yaml
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from dispute_agent.data.generator import (
@@ -112,7 +114,7 @@ def _render_row(instance: FactInstance, profile: SFTProfile | None = None) -> di
         "tool_call_count": len(profile.tool_names),
         "recovered_from_invalid_result": profile.edge_case == "illegal_result_recovery",
     }
-    return {
+    row = {
         "fact_instance_id": instance.fact_instance_id,
         "case_id": instance.case_id,
         "split": instance.split,
@@ -127,6 +129,9 @@ def _render_row(instance: FactInstance, profile: SFTProfile | None = None) -> di
         "_fact_fingerprint": fact_fingerprint(instance),
         "metadata": metadata,
     }
+    if instance.split in {"grpo_train", "grpo_val"}:
+        row["observation"] = instance.observation.model_dump(mode="json")
+    return row
 
 
 def _write_jsonl(path: Path, rows: list[dict]) -> None:
@@ -216,21 +221,26 @@ def _build_rows(seed: int, counts: dict[str, int], fixture_size: int | None) -> 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--seed", type=int, default=20260817)
-    parser.add_argument("--output", type=str, default="data/generated")
+    parser.add_argument("--config", type=str, default=None)
+    parser.add_argument("--seed", type=int, default=None)
+    parser.add_argument("--output", "--output-dir", dest="output", type=str, default=None)
     parser.add_argument("--fixture-size", type=int, default=None)
     parser.add_argument("--freeze-test", action="store_true")
     args = parser.parse_args()
 
-    output = Path(args.output)
+    config = {}
+    if args.config:
+        config = yaml.safe_load(Path(args.config).read_text(encoding="utf-8")) or {}
+    seed = args.seed if args.seed is not None else int(config.get("seed", 20260817))
+    output = Path(args.output or config.get("output_dir", "data/generated"))
     if args.freeze_test:
         return _freeze_or_verify(output)
 
     output.mkdir(parents=True, exist_ok=True)
     manifest_path = output / "manifest.json"
-    manifest = build_dataset_manifest(seed=args.seed, fixture_size=args.fixture_size)
+    manifest = build_dataset_manifest(seed=seed, fixture_size=args.fixture_size)
 
-    rows_by_split = _build_rows(args.seed, manifest.counts, args.fixture_size)
+    rows_by_split = _build_rows(seed, manifest.counts, args.fixture_size)
     file_hashes: dict[str, str] = {}
     for split_name, rows in rows_by_split.items():
         public_path = output / f"{split_name}.jsonl"
@@ -249,7 +259,7 @@ def main() -> int:
         file_hashes[hidden_path.name] = _sha256_file(hidden_path)
 
     manifest_dict = {
-        "seed": args.seed,
+        "seed": seed,
         "schema_version": manifest.schema_version,
         "counts": manifest.counts,
         "ood_counts": manifest.ood_counts,
@@ -265,7 +275,7 @@ def main() -> int:
             for name, split in manifest.splits.items()
         },
         "file_hashes": file_hashes,
-        "generation_config": {"seed": args.seed, "fixture_size": args.fixture_size},
+        "generation_config": {"seed": seed, "fixture_size": args.fixture_size},
     }
     manifest_text = json.dumps(manifest_dict, ensure_ascii=False, indent=2, sort_keys=True)
     manifest_path.write_text(manifest_text + "\n", encoding="utf-8")

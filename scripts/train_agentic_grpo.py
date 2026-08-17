@@ -1,44 +1,51 @@
 #!/usr/bin/env python3
-"""Run monitored Agent Lightning + VERL Agentic GRPO.
-
-Usage:
-    python scripts/train_agentic_grpo.py --config configs/grpo.yaml --dry-run
-    python scripts/train_agentic_grpo.py --config configs/grpo.yaml --ablation no-tool-cost
-"""
+"""Prepare or execute the Agent Lightning 0.3 + verl 0.5 GRPO run."""
 from __future__ import annotations
 
 import argparse
-import sys
+import json
 from pathlib import Path
+import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from dispute_agent.training.grpo_config import load_grpo_config
+from dispute_agent.training.grpo_runtime import GRPORunRequest, run_grpo_training
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--config", default="configs/grpo.yaml")
+    parser.add_argument("--data-dir", default="data/processed")
+    parser.add_argument("--output-root", default="outputs/grpo")
+    parser.add_argument("--run-id")
+    parser.add_argument("--profile", choices=["smoke", "formal"], default="smoke")
+    parser.add_argument("--curriculum-phase", type=int, choices=[1, 2], default=1)
+    parser.add_argument("--input-adapter")
+    parser.add_argument("--max-steps", type=int)
     parser.add_argument("--dry-run", action="store_true")
-    parser.add_argument("--ablation", choices=["full", "no-tool-cost"], default="full")
+    parser.add_argument("--resume", action="store_true")
     args = parser.parse_args()
 
-    cfg = load_grpo_config(args.config)
-    if args.dry_run:
-        print("GRPO dry-run plan")
-        print(f"  adv_estimator={cfg.algorithm.adv_estimator}")
-        print(f"  lora_adapter_path={cfg.actor_rollout_ref.model.lora_adapter_path}")
-        print(f"  lora_rank={cfg.actor_rollout_ref.model.lora_rank} alpha={cfg.actor_rollout_ref.model.lora_alpha}")
-        print(f"  rollout_n={cfg.actor_rollout_ref.rollout.n} tp={cfg.actor_rollout_ref.rollout.tensor_model_parallel_size}")
-        print(f"  n_gpus_per_node={cfg.trainer.n_gpus_per_node}")
-        print(f"  curriculum phase1_max_rounds={cfg.curriculum.phase1_max_rounds} phase2_max_rounds={cfg.curriculum.phase2_max_rounds}")
-        print(f"  ablation={args.ablation}")
-        if args.ablation == "no-tool-cost":
-            print("  NOTE: tool-cost coefficient will be zeroed; all other config remains identical.")
-        return 0
-
-    # Actual training launch is implemented on the training machine after Phase 0.
-    print("GRPO training launch is reserved for the dual-4090 environment.")
+    if not args.dry_run and not args.run_id:
+        parser.error("--run-id is required outside --dry-run")
+    request = GRPORunRequest(
+        config_path=Path(args.config),
+        data_dir=Path(args.data_dir),
+        output_root=Path(args.output_root),
+        run_id=args.run_id or "dry-run",
+        profile=args.profile,
+        curriculum_phase=args.curriculum_phase,
+        input_adapter=Path(args.input_adapter) if args.input_adapter else None,
+        max_steps=args.max_steps,
+        resume=args.resume,
+    )
+    result = run_grpo_training(request, dry_run=args.dry_run)
+    print(json.dumps({
+        "status": "planned" if result.dry_run else "completed",
+        "run_dir": str(result.run_dir),
+        "manifest": str(result.manifest_path),
+        "dry_run": result.dry_run,
+    }, ensure_ascii=False))
     return 0
 
 

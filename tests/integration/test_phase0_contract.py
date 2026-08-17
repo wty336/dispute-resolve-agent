@@ -1,33 +1,45 @@
-import json
-import subprocess
-import sys
-from pathlib import Path
-
 import pytest
 
-ROOT = Path(__file__).parents[2]
-REQUIRED = {
-    "sdk_vllm_multiturn", "thinking_tool_compatibility", "trace_complete",
-    "trl_adapter_loaded_by_verl", "grpo_update_reload", "dual_gpu_no_oom",
-    "single_model_span_and_reward",
-}
+from dispute_agent.training.phase0 import (
+    GateResult,
+    GateStatus,
+    Phase0EvidenceError,
+    Phase0Report,
+    REQUIRED_GATES,
+    build_fixture_report,
+)
 
 
-@pytest.fixture
-def phase0_report():
-    out_dir = ROOT / ".tmp_tests" / "phase0"
-    out_dir.mkdir(parents=True, exist_ok=True)
-    report_path = out_dir / "phase0_report.json"
-    subprocess.run(
-        [sys.executable, "scripts/phase0_smoke.py", "--fixture", "--report", str(report_path)],
-        cwd=ROOT,
-        check=True,
-    )
-    return json.loads(report_path.read_text(encoding="utf-8"))
+def test_fixture_report_marks_every_execution_gate_not_run(tmp_path):
+    report = build_fixture_report(output_dir=tmp_path)
+
+    assert report.mode == "fixture"
+    assert {gate.status for gate in report.gates} == {GateStatus.NOT_RUN}
+    assert report.overall_status == GateStatus.NOT_RUN
+    assert not report.ready_for_formal_training
 
 
-def test_phase0_report_passes_every_gate(phase0_report):
-    assert set(phase0_report["gates"]) == REQUIRED
-    assert all(gate["passed"] for gate in phase0_report["gates"].values())
-    assert phase0_report["gpu_count"] == 2
-    assert phase0_report["quantization"] == "none"
+def test_pass_requires_evidence_file(tmp_path):
+    with pytest.raises(Phase0EvidenceError):
+        GateResult(
+            name="adapter_reloaded",
+            status=GateStatus.PASSED,
+            summary="missing evidence",
+            evidence_path=tmp_path / "missing.json",
+        )
+
+
+def test_report_cannot_claim_ready_with_failed_or_not_run_gate(tmp_path):
+    for status in (GateStatus.FAILED, GateStatus.NOT_RUN):
+        gates = [
+            GateResult(name=name, status=(status if index == 0 else GateStatus.NOT_RUN), summary="no")
+            for index, name in enumerate(REQUIRED_GATES)
+        ]
+        report = Phase0Report(
+            mode="actual",
+            run_id="r",
+            gates=gates,
+            overall_status=status,
+            ready_for_formal_training=True,
+        )
+        assert not report.ready_for_formal_training

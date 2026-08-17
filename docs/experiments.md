@@ -1,30 +1,22 @@
 # 实验记录
 
-> 本文件只记录真实执行过的实验与结果。未运行的训练实验不填写数字。
+> 本文件只记录真实执行过的实验与结果。未运行的训练实验保持 `not_run`，不填零值或猜测性指标。
 
-## 已完成的本地非 GPU 验证
+## 本地实现状态
 
-- [x] Task 0–11 代码与测试：`pytest -q` 全部通过。
-- [x] 数据 fixture 生成：`python scripts/generate_data.py --seed 20260817 --fixture-size 24 --output artifacts/data-smoke`。
-- [x] SFT fixture 数据/配置检查：`python scripts/train_sft.py --config configs/sft.yaml --data-dir artifacts/data-smoke --fixture`；未加载模型，未产生训练指标。
-- [x] GRPO dry-run：`python scripts/train_agentic_grpo.py --config configs/grpo.yaml --dry-run`。
+| 项目 | 状态 | 证据 |
+| --- | --- | --- |
+| GRPO 公共观测与隐藏标签隔离 | implemented_locally | `scripts/generate_data.py`, `tests/leakage/test_dataset_leakage.py` |
+| manifest 校验与 fresh EpisodeSource | implemented_locally | `dispute_agent/training/grpo_dataset.py` |
+| Agent Lightning/verl 训练入口与 dry-run | implemented_locally | `dispute_agent/training/grpo_runtime.py`, `scripts/train_agentic_grpo.py` |
+| 双 RTX 4090 Phase 0 | not_run | `outputs/grpo/<run-id>/phase0_report.json`（待生成） |
+| 正式 GRPO 与实测指标 | not_run | `outputs/grpo/<run-id>/metrics/summary.json`（待生成） |
 
-## 待训练机完成
+## 运行记录模板
 
-- [ ] Phase 0 七项门禁（`scripts/phase0_smoke.py`）。
-- [ ] Qwen3 tokenizer non-thinking / assistant-mask preflight。
-- [ ] 双 RTX 4090 两步 BF16 LoRA smoke 与 checkpoint 续训。
-- [ ] SFT-500 / SFT-1000 / SFT-1500 正式训练。
-- [ ] Agentic GRPO 主实验与无工具成本消融。
-- [ ] 冻结测试集统一评测与 Bootstrap 95% CI。
-- [ ] 最终 README 结果表。
+| run id | git commit | config hash | data hash | adapter hash | curriculum phase | optimizer updates | valid rollout rate | reward mean/std | component means | tool-call mean | failure rate | checkpoint path/hash | Phase 0 report |
+| --- | --- | --- | --- | --- | ---: | ---: | ---: | --- | --- | ---: | ---: | --- | --- |
+| not_run | not_run | not_run | not_run | not_run | not_run | not_run | not_run | not_run | not_run | not_run | not_run | not_run | not_run |
 
-## 记录格式
-
-每次训练实验完成后，在本文件追加：
-
-- 日期、环境、commit SHA；
-- 数据 manifest SHA-256；
-- SFT / GRPO 配置 hash；
-- 评测命令与产物路径；
-- 真实指标表。
+完成一次服务器实验后，追加真实的日期、环境版本、commit SHA、数据/配置/adapter
+哈希、命令、checkpoint 路径和指标；不要把 fixture 或 dry-run 写成训练结果。

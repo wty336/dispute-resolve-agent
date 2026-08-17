@@ -1,30 +1,56 @@
 algorithm:
   adv_estimator: grpo
-
+  use_kl_in_reward: false
+data:
+  train_batch_size: 2
+  max_prompt_length: 2048
+  max_response_length: 384
 actor_rollout_ref:
   model:
+    path: Qwen/Qwen3-8B
     lora_adapter_path: checkpoints/sft/sft-1500-best
     lora_rank: 32
     lora_alpha: 64
+    lora_dropout: 0.0
+    target_modules: all-linear
+    enable_gradient_checkpointing: true
+    use_remove_padding: true
   rollout:
+    name: vllm
     n: 4
     tensor_model_parallel_size: 2
     max_tokens_per_round: 384
     max_episode_tokens: 1280
-
+    gpu_memory_utilization: 0.45
+    max_num_seqs: 8
+    load_format: safetensors
+    tool_format: hermes
+  actor:
+    ppo_mini_batch_size: 8
+    ppo_micro_batch_size_per_gpu: 1
+    learning_rate: 1.0e-5
+    use_kl_loss: true
+    kl_loss_coef: 0.001
+    kl_loss_type: low_var_kl
+    param_offload: true
+    optimizer_offload: true
 trainer:
   n_gpus_per_node: 2
-
+  nnodes: 1
+  total_epochs: 1
+  save_freq: 25
+  test_freq: 25
+  val_before_train: true
+  logger: [console, wandb]
+agentlightning:
+  n_runners: 1
+  trajectory_max_prompt_length: 2048
+  trajectory_max_response_length: 4096
 quantization: null
-
 curriculum:
-  phase1_tools:
-    - check_logistics
-    - check_buyer_history
-    - check_merchant_history
+  phase1_tools: [check_logistics, check_buyer_history, check_merchant_history]
   phase1_max_rounds: 3
   phase2_max_rounds: 5
-
 monitor:
   window: 50
   max_zero_variance_ratio: 0.30

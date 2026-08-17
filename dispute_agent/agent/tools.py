@@ -7,15 +7,23 @@ from dispute_agent.domain.policies import MAX_COMPENSATION_RATIO
 from dispute_agent.domain.schemas import Decision, Escalation
 
 
-def build_agent_tools(episode) -> list:
-    """Build the SDK tools bound to a single episode."""
-    tools = [
-        _check_logistics_tool(episode),
-        _check_buyer_history_tool(episode),
-        _check_merchant_history_tool(episode),
-        _verify_evidence_tool(episode),
-        _submit_decision_tool(episode),
-    ]
+def build_agent_tools(episode, allowed_tools: set[str] | None = None) -> list:
+    """Build episode-bound investigation tools and always expose submission."""
+    builders = {
+        "check_logistics": _check_logistics_tool,
+        "check_buyer_history": _check_buyer_history_tool,
+        "check_merchant_history": _check_merchant_history_tool,
+        "verify_evidence": _verify_evidence_tool,
+    }
+    if allowed_tools is None:
+        selected = set(builders)
+    else:
+        unknown = set(allowed_tools) - set(builders)
+        if unknown:
+            raise ValueError(f"unknown investigation tool(s): {sorted(unknown)}")
+        selected = set(allowed_tools)
+    tools = [builders[name](episode) for name in builders if name in selected]
+    tools.append(_submit_decision_tool(episode))
     return tools
 
 

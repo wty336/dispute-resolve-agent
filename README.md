@@ -7,9 +7,9 @@
 - 通过 **Agent Lightning + VERL** 完成 Agentic GRPO；
 - 在冻结的 ID/OOD 测试集上统一评测。
 
-> 当前仓库包含完整代码、配置、测试与本地可运行的 smoke 流程。
-> 真实 Qwen3-8B 训练和 Agent Lightning/VERL 训练结果需在双 4090 环境完成
-> **Phase 0** 门禁后填写，仓库不包含虚构指标。
+> 当前仓库包含可审计的代码、配置、定向契约测试和本地 dry-run/fixture 流程。
+> Windows 只能验证数据、配置和 rollout 核心行为；真实 Qwen3-8B 与
+> Agent Lightning/VERL 训练必须在 Ubuntu 双 4090 环境完成 **Phase 0** 门禁后填写，仓库不包含虚构指标。
 
 ## 1. 问题定义
 
@@ -95,19 +95,16 @@ tests/                       # unit / integration / leakage / evaluation
 
 本地 `--fixture` 模式可生成报告；真实门禁需在 Ubuntu 22.04 / Python 3.11 / 双 RTX 4090 上运行。
 
-## 7. 统一评测命令
+## 7. 本地准备命令
 
-```bash
-python scripts/generate_data.py --seed 20260817 --fixture-size 24 --output artifacts/data-smoke
-python scripts/train_sft.py --config configs/sft.yaml --data-dir artifacts/data-smoke --fixture
-python scripts/train_agentic_grpo.py --config configs/grpo.yaml --dry-run
-python scripts/evaluate.py --config configs/evaluation.yaml --models all --output artifacts/evaluation
-pytest -q
+```powershell
+python scripts/generate_data.py --config configs/data.yaml --output-dir data/processed
+python scripts/train_agentic_grpo.py --config configs/grpo.yaml --data-dir data/processed --profile smoke --curriculum-phase 1 --dry-run
+python scripts/phase0_smoke.py --mode fixture --config configs/grpo.yaml --data-dir data/processed --run-id local-fixture
 ```
 
-`train_sft.py --fixture` 只校验配置、数据清单、文件哈希和公开字段，不加载模型；
-`--preflight` 只加载 tokenizer，验证 non-thinking chat template、assistant mask 和序列长度；
-只有下面通过 `accelerate launch` 启动的命令会更新模型权重。
+这些命令不会下载模型、初始化 CUDA 或导入 Agent Lightning/verl。真实训练和
+指标只能由 Ubuntu 双 RTX 4090 的 Phase 0 报告支持。
 
 ## 8. 真实结果表
 
@@ -153,9 +150,10 @@ accelerate launch --num_processes 2 scripts/train_sft.py --train-size 500
 ```bash
 # Ubuntu 22.04, Python 3.11, CUDA 12.x
 uv pip install -e ".[dev,train]" -c constraints/train.txt
-python scripts/phase0_smoke.py --cases 20 --report artifacts/phase0/report.json
-pytest tests/integration/test_phase0_contract.py -q
+python scripts/phase0_smoke.py --mode actual --config configs/grpo.yaml --data-dir data/processed --run-id phase0-<timestamp>
 ```
+
+`--mode fixture` 只生成 `not_run` 报告，不能作为训练通过证明。
 
 ## 11. 典型 Trace
 

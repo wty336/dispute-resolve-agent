@@ -1,29 +1,28 @@
 # 简历表述证据清单
 
-> 原则：每一条简历表述都能链接到仓库中的 config、日志、测试或评测产物。
-> 未实际跑通的 Agent Lightning/VERL 或指标不得出现在简历中。
+> 简历中的每一条表述都必须能链接到仓库中的配置、日志、定向测试或真实训练产物。
+> 未实际跑通的 Agent Lightning/VERL、checkpoint 和指标不得写成“已完成”。
 
-## 可立即引用的本地证据
+## 当前可引用（本地已实现）
 
-| 表述 | 证据位置 |
-| --- | --- |
-| 实现公开/隐藏领域协议与泄漏隔离 | `dispute_agent/domain/`, `tests/leakage/test_hidden_state.py` |
-| 确定性工具仿真与多轮 Episode 状态机 | `dispute_agent/tools/`, `dispute_agent/environment/`, `tests/unit/tools/`, `tests/integration/test_episode_state.py` |
-| 可审计训练奖励与离线业务效用 | `dispute_agent/rewards/`, `tests/unit/rewards/` |
-| 泄漏安全合成数据管线 | `dispute_agent/data/`, `tests/unit/data/`, `tests/leakage/test_dataset_leakage.py` |
-| OpenAI Agents SDK 多轮工具 Runtime | `dispute_agent/agent/`, `tests/unit/agent/`, `tests/integration/test_agent_episode.py` |
-| Agent Lightning rollout 适配与单次奖励返回 | `dispute_agent/training/lightning_agent.py`, `tests/integration/test_lightning_rollout.py` |
-| TRL Qwen3-8B BF16 LoRA SFT 真实训练入口 | `dispute_agent/training/sft_runtime.py`, `configs/sft.yaml`, `constraints/sft.txt` |
-| SFT 数据与运行可追溯性 | `run_manifest.json`, `metrics.json`, `sft-{size}-best/adapter_config.json` |
-| Agent Lightning + VERL GRPO 配置与坍缩监控 | `configs/grpo.yaml`, `dispute_agent/training/grpo_config.py`, `dispute_agent/training/monitor.py`, `tests/unit/training/` |
-| 统一公平评测协议 | `dispute_agent/evaluation/`, `tests/evaluation/` |
-| 最小 FastAPI 演示与公开 Trace | `dispute_agent/api/`, `tests/integration/test_api.py` |
+| 表述 | 证据位置 | 状态 |
+| --- | --- | --- |
+| 公开/隐藏领域协议与泄漏隔离 | `dispute_agent/domain/`, `tests/leakage/` | implemented_locally |
+| 确定性工具仿真与多轮 Episode 状态机 | `dispute_agent/tools/`, `dispute_agent/environment/` | implemented_locally |
+| 可审计训练奖励与离线业务效用 | `dispute_agent/rewards/` | implemented_locally |
+| 泄漏安全合成数据管线 | `dispute_agent/data/`, `scripts/generate_data.py` | implemented_locally |
+| OpenAI Agents SDK 多轮工具 Runtime | `dispute_agent/agent/` | implemented_locally |
+| Agent Lightning rollout 核心与懒绑定 | `dispute_agent/training/lightning_agent.py` | implemented_locally |
+| TRL Qwen3-8B BF16 LoRA SFT 入口 | `dispute_agent/training/sft_runtime.py`, `configs/sft.yaml` | implemented_locally |
+| Agent Lightning 0.3.0 + verl 0.5.0 GRPO 入口 | `dispute_agent/training/grpo_runtime.py`, `configs/grpo.yaml` | implemented_locally |
 
-## 待训练机完成后补充
+## 必须等服务器真实产物后才能引用
 
-| 表述 | 证据位置 |
-| --- | --- |
-| 双 4090 Phase 0 门禁全部通过 | `artifacts/phase0/report.json`, `constraints/phase0-lock.txt` |
-| SFT 规模消融真实指标 | `artifacts/evaluation/metrics.json`, `docs/experiments.md` |
-| Agentic GRPO 真实更新与 checkpoint 可重载 | `artifacts/phase0/report.json`, 训练日志 |
-| 统一评测矩阵 | `artifacts/evaluation/summary.md` |
+| 表述 | 必需证据 | 当前状态 |
+| --- | --- | --- |
+| 双 4090 Phase 0 门禁全部通过 | `outputs/grpo/<phase0-run>/phase0_report.json`，所有 gate 为 `passed` | not_run |
+| GRPO 发生真实 optimizer update | `run_manifest.json`、verl checkpoint、`metrics/summary.json` | not_run |
+| GRPO checkpoint 可独立重载并生成 token | `verify_grpo_checkpoint.py` 的 evidence JSON | not_run |
+| 正式训练样本数与实测指标 | `grpo_train=700`、`grpo_val=100`、真实 metrics | not_run |
+
+在 Phase 0 报告、checkpoint 和指标存在前，只能表述“已实现并通过本地契约验证”，不能表述“完成 Agentic GRPO 训练”。
