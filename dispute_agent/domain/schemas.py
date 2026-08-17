@@ -45,6 +45,7 @@ class ToolResult(BaseModel):
     cached: bool = False
     cost: float = 0.0
     success: bool = True
+    error_type: Literal["timeout", "missing", "backend_error"] | None = None
 
 
 class DisputeObservation(BaseModel):
@@ -81,6 +82,15 @@ class DisputeGroundTruth(BaseModel):
     should_escalate: bool
     tool_information_value: dict[str, float] = Field(default_factory=dict)
     risk_level: Literal["low", "medium", "high"] = "medium"
+    logistics_state: Literal[
+        "delivered_verified", "delivered_disputed", "lost", "damaged_in_transit"
+    ] = "delivered_verified"
+    evidence_authenticity: dict[str, Literal["authentic", "suspicious", "forged"]] = Field(
+        default_factory=dict
+    )
+    tool_noise_rate: float = Field(default=0.08, ge=0, le=1)
+    tool_timeout_rate: float = Field(default=0.02, ge=0, le=1)
+    tool_missing_rate: float = Field(default=0.03, ge=0, le=1)
 
 
 class Decision(BaseModel):

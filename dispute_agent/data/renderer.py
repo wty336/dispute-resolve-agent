@@ -37,6 +37,7 @@ def render_sft_trace(
     instance: FactInstance,
     *,
     tool_plan: list[tuple[str, dict]] | None = None,
+    tool_result_overrides: dict[int, str] | None = None,
     decision: Decision | Escalation | None = None,
 ) -> list[dict]:
     """Render a native tool-protocol SFT trace for one fact instance."""
@@ -47,6 +48,7 @@ def render_sft_trace(
 
     for index, (tool_name, arguments) in enumerate(tool_plan or []):
         call_id = f"call_{index}"
+        previous_result_was_invalid = index > 0 and index - 1 in (tool_result_overrides or {})
         result = simulate_tool(
             tool_name,
             case_id=instance.case_id,
@@ -57,7 +59,11 @@ def render_sft_trace(
         messages.append(
             {
                 "role": "assistant",
-                "content": None,
+                "content": (
+                    "上一工具返回格式非法，改用其他证据源继续核验。"
+                    if previous_result_was_invalid
+                    else None
+                ),
                 "tool_calls": [
                     {
                         "id": call_id,
@@ -74,7 +80,7 @@ def render_sft_trace(
             {
                 "role": "tool",
                 "tool_call_id": call_id,
-                "content": result.payload,
+                "content": (tool_result_overrides or {}).get(index, result.payload),
             }
         )
 
