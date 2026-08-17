@@ -42,3 +42,6 @@ artifacts/**/checkpoints/
 Thumbs.db
 .idea/
 .vscode/
+
+# Isolated development worktrees
+.worktrees/
