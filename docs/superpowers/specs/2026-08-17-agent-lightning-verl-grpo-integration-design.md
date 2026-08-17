@@ -109,6 +109,8 @@ Agent Lightning task 只包含：
 
 task 不包含责任标签、赔付区间、是否应升级、证据真实性或其他 Ground Truth。rollout worker 根据 `case_id` 从固定数据目录加载公开记录和 Ground Truth sidecar，并在环境边界内创建全新的 `EpisodeState`。
 
+为保证 Episode 能无损重建，`grpo_train.jsonl` 和 `grpo_val.jsonl` 的公开行必须额外保存结构化 `observation`。该字段是 `DisputeObservation.model_dump(mode="json")` 的结果，只包含 Agent 本来允许看到的信息。SFT 行继续以 `messages` 为训练输入，不要求改变 SFT runtime。
+
 每个 rollout 必须重建 Episode，不允许从全局仓库返回同一个可变对象。同一 GRPO 组的四个 rollout 共享相同案例、初态和确定性工具结果，但累计成本、已见证据、非法动作计数和终局决策互不共享。组内差异只来自模型采样。
 
 训练前执行以下数据门禁：
@@ -251,6 +253,9 @@ checkpoint 至少包含可重载 LoRA adapter、优化器/调度器状态和训�
 
 计划修改：
 
+- `scripts/generate_data.py`
+- `dispute_agent/agent/tools.py`
+- `dispute_agent/agent/runtime.py`
 - `dispute_agent/training/lightning_agent.py`
 - `dispute_agent/training/grpo_config.py`
 - `scripts/train_agentic_grpo.py`
