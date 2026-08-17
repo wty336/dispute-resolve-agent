@@ -1,5 +1,9 @@
 """Shared fixtures for unit and integration tests."""
+import json
+
+import httpx
 import pytest
+import pytest_asyncio
 
 from dispute_agent.domain.schemas import (
     Decision,
@@ -85,3 +89,93 @@ def valid_decision() -> Decision:
         evidence_ids=["chat:1", "logistics:o-1"],
         reason="物流异常且证据支持商家责任",
     )
+
+
+class FakeModelServer:
+    def __init__(self) -> None:
+        self.url = "http://fake-model"
+        self.requests: list[dict] = []
+        self._call_count = 0
+        self.http_client = httpx.AsyncClient(transport=httpx.MockTransport(self._handler))
+
+    async def _handler(self, request: httpx.Request) -> httpx.Response:
+        body = json.loads(request.content)
+        self.requests.append(body)
+        call = self._call_count
+        self._call_count += 1
+        if call == 0:
+            return self._response(
+                tool_calls=[
+                    {
+                        "id": "call_1",
+                        "type": "function",
+                        "function": {
+                            "name": "check_logistics",
+                            "arguments": json.dumps({"order_id": "o-1"}),
+                        },
+                    }
+                ]
+            )
+        if call == 1:
+            return self._response(
+                tool_calls=[
+                    {
+                        "id": "call_2",
+                        "type": "function",
+                        "function": {
+                            "name": "submit_decision",
+                            "arguments": json.dumps(
+                                {
+                                    "action": "decide",
+                                    "liability": "merchant",
+                                    "compensation": 50.0,
+                                    "confidence": 0.9,
+                                    "evidence_ids": ["chat:1", "logistics:o-1"],
+                                    "reason": "物流异常且证据支持商家责任",
+                                }
+                            ),
+                        },
+                    }
+                ]
+            )
+        return self._response(content="unexpected extra call")
+
+    def _response(self, content: str | None = None, tool_calls: list | None = None) -> httpx.Response:
+        message: dict = {"role": "assistant", "content": content}
+        if tool_calls:
+            message["tool_calls"] = tool_calls
+        payload = {
+            "id": f"chatcmpl-{self._call_count}",
+            "object": "chat.completion",
+            "created": 0,
+            "model": "qwen3-8b",
+            "choices": [{"index": 0, "message": message, "finish_reason": "tool_calls" if tool_calls else "stop"}],
+            "usage": {"prompt_tokens": 1, "completion_tokens": 1, "total_tokens": 2},
+        }
+        return httpx.Response(200, json=payload)
+
+    def requests_contain(self, key: str, value: str) -> bool:
+        for request in self.requests:
+            if _contains_key_value(request, key, value):
+                return True
+        return False
+
+    def requests_contain_text(self, text: str) -> bool:
+        return any(text in json.dumps(request, ensure_ascii=False) for request in self.requests)
+
+
+def _contains_key_value(obj, key: str, value: str) -> bool:
+    if isinstance(obj, dict):
+        if obj.get(key) == value:
+            return True
+        return any(_contains_key_value(v, key, value) for v in obj.values())
+    if isinstance(obj, list):
+        return any(_contains_key_value(item, key, value) for item in obj)
+    return False
+
+
+@pytest_asyncio.fixture
+async def fake_model_server():
+    server = FakeModelServer()
+    yield server
+    await server.http_client.aclose()

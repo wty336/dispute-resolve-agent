@@ -1,31 +1,18 @@
-"""电商纠纷判责 Agent —— 多方博弈与长期收益仿真。"""
+"""Agentic GRPO dispute resolution agent package.
 
-from . import (
-    case_generator,
-    data_generation,
-    environment,
-    evaluate,
-    models,
-    oracle,
-    payoff,
-    platform_agent,
-    prompting,
-    reward,
-    tools,
-    verl_reward,
-)
+Modules are organized by domain, data, tools, environment, rewards, agent,
+training, evaluation, and API.  Legacy single-step protocol modules are not
+imported here.
+"""
+from . import agent, data, domain, environment, evaluation, rewards, tools, training
 
 __all__ = [
-    "models",
-    "case_generator",
-    "payoff",
-    "platform_agent",
+    "agent",
+    "data",
+    "domain",
     "environment",
-    "evaluate",
-    "oracle",
-    "prompting",
-    "reward",
-    "data_generation",
+    "evaluation",
+    "rewards",
     "tools",
-    "verl_reward",
+    "training",
 ]
