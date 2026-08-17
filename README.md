@@ -43,7 +43,7 @@ OpenAI Agents SDK Agent
 
 ```text
 configs/                     # sft.yaml / grpo.yaml / evaluation.yaml
-constraints/train.txt        # 训练依赖版本固定
+constraints/                 # SFT 与完整训练环境的依赖版本固定
 dispute_agent/
   domain/                    # 公开/隐藏 Schema、策略常量
   data/                      # 合成数据生成、渲染、切分、校验
@@ -99,11 +99,15 @@ tests/                       # unit / integration / leakage / evaluation
 
 ```bash
 python scripts/generate_data.py --seed 20260817 --fixture-size 24 --output artifacts/data-smoke
-python scripts/train_sft.py --config configs/sft.yaml --fixture --max-steps 1
+python scripts/train_sft.py --config configs/sft.yaml --data-dir artifacts/data-smoke --fixture
 python scripts/train_agentic_grpo.py --config configs/grpo.yaml --dry-run
 python scripts/evaluate.py --config configs/evaluation.yaml --models all --output artifacts/evaluation
 pytest -q
 ```
+
+`train_sft.py --fixture` 只校验配置、数据清单、文件哈希和公开字段，不加载模型；
+`--preflight` 只加载 tokenizer，验证 non-thinking chat template、assistant mask 和序列长度；
+只有下面通过 `accelerate launch` 启动的命令会更新模型权重。
 
 ## 8. 真实结果表
 
@@ -127,6 +131,24 @@ pytest -q
 - 未进行多随机种子完整训练，Bootstrap 只提供单种子下的 95% CI。
 
 ## 10. 双 4090 复现方式
+
+SFT 使用单独的精简依赖约束：
+
+```bash
+# Ubuntu 22.04, Python 3.11, CUDA 12.x
+uv pip install -e ".[dev,sft]" -c constraints/sft.txt
+python scripts/generate_data.py --seed 20260817 --output data/generated
+python scripts/generate_data.py --freeze-test --output data/generated
+python scripts/train_sft.py --train-size 500 --preflight
+accelerate launch --num_processes 2 scripts/train_sft.py --train-size 500 --max-steps 2 --output-dir checkpoints/sft/smoke-500
+accelerate launch --num_processes 2 scripts/train_sft.py --train-size 500
+```
+
+两步 smoke 成功并验证 checkpoint 续训后，再依次执行 1000、1500 两档正式训练。
+训练目录会保存 `run_manifest.json`、`metrics.json` 和 checkpoint；验证集最优 adapter
+仅在训练成功后发布为同级的 `sft-{size}-best/`。
+
+完整 Agentic GRPO 环境使用：
 
 ```bash
 # Ubuntu 22.04, Python 3.11, CUDA 12.x

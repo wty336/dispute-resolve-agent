@@ -13,7 +13,8 @@
 | 泄漏安全合成数据管线 | `dispute_agent/data/`, `tests/unit/data/`, `tests/leakage/test_dataset_leakage.py` |
 | OpenAI Agents SDK 多轮工具 Runtime | `dispute_agent/agent/`, `tests/unit/agent/`, `tests/integration/test_agent_episode.py` |
 | Agent Lightning rollout 适配与单次奖励返回 | `dispute_agent/training/lightning_agent.py`, `tests/integration/test_lightning_rollout.py` |
-| TRL BF16 LoRA SFT 配置与 assistant-only loss | `configs/sft.yaml`, `dispute_agent/training/sft_data.py`, `tests/unit/training/` |
+| TRL Qwen3-8B BF16 LoRA SFT 真实训练入口 | `dispute_agent/training/sft_runtime.py`, `configs/sft.yaml`, `constraints/sft.txt` |
+| SFT 数据与运行可追溯性 | `run_manifest.json`, `metrics.json`, `sft-{size}-best/adapter_config.json` |
 | Agent Lightning + VERL GRPO 配置与坍缩监控 | `configs/grpo.yaml`, `dispute_agent/training/grpo_config.py`, `dispute_agent/training/monitor.py`, `tests/unit/training/` |
 | 统一公平评测协议 | `dispute_agent/evaluation/`, `tests/evaluation/` |
 | 最小 FastAPI 演示与公开 Trace | `dispute_agent/api/`, `tests/integration/test_api.py` |
