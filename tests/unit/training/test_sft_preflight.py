@@ -7,7 +7,7 @@ class AuditTokenizer:
     token_text = {
         10: "<SYSTEM_SENTINEL>",
         11: "<USER_SENTINEL>",
-        12: "<ASSISTANT_SENTINEL>",
+        12: "<think>\n\n</think><ASSISTANT_SENTINEL>",
         13: "<TOOL_SENTINEL>",
         14: "<FINAL_SENTINEL>",
     }
@@ -28,6 +28,13 @@ class AuditTokenizer:
 
     def decode(self, token_ids, **kwargs):
         return "".join(self.token_text.get(token_id, "x") for token_id in token_ids)
+
+
+class NonemptyThinkingTokenizer(AuditTokenizer):
+    token_text = {
+        **AuditTokenizer.token_text,
+        12: "<think>hidden reasoning</think><ASSISTANT_SENTINEL>",
+    }
 
 
 ROW = {
@@ -53,6 +60,7 @@ def test_preflight_reports_valid_assistant_only_dataset():
     [
         (AuditTokenizer(mask=[1, 0, 1, 0, 1]), "non-assistant"),
         (AuditTokenizer(length=9), "exceeds max_length"),
+        (NonemptyThinkingTokenizer(), "non-empty thinking"),
     ],
 )
 def test_preflight_rejects_unsafe_mask_or_overlength(tokenizer, message):

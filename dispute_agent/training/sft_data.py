@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import re
 from typing import Any, Iterable
 
 
@@ -117,8 +118,16 @@ def _audit_template(tokenizer: Any, max_length: int) -> None:
     if any(sentinel not in supervised_text for sentinel in required):
         raise SFTPreflightError("assistant mask omits assistant template content")
     lowered = supervised_text.lower()
-    if "<think>" in lowered or "</think>" in lowered:
-        raise SFTPreflightError("thinking tags remain in supervised template content")
+    thinking_blocks = re.findall(r"<think>(.*?)</think>", lowered, flags=re.DOTALL)
+    without_complete_blocks = re.sub(
+        r"<think>.*?</think>", "", lowered, flags=re.DOTALL
+    )
+    if (
+        "<think>" in without_complete_blocks
+        or "</think>" in without_complete_blocks
+        or any(block.strip() for block in thinking_blocks)
+    ):
+        raise SFTPreflightError("assistant mask contains non-empty thinking content")
 
 
 def preflight_dataset(

@@ -1,10 +1,16 @@
 import json
 from pathlib import Path
+import sys
+from types import ModuleType, SimpleNamespace
 
 import pytest
 
 from dispute_agent.training.sft_dataset import SFTDatasetBundle
-from dispute_agent.training.sft_runtime import BackendResult, build_trainer_spec
+from dispute_agent.training.sft_runtime import (
+    BackendResult,
+    build_trainer_spec,
+    prepare_training_tokenizer,
+)
 from dispute_agent.training.train_sft import RunError, load_sft_config, run_sft_training
 
 
@@ -41,6 +47,35 @@ def _bundle() -> SFTDatasetBundle:
         file_hashes={"sft_train.jsonl": "train-hash", "sft_val.jsonl": "val-hash"},
         manifest_sha256="manifest-hash",
     )
+
+
+def test_tokenizer_preparation_uses_version_compatible_template_api(monkeypatch):
+    tokenizer = SimpleNamespace(chat_template="original")
+
+    class AutoTokenizer:
+        @staticmethod
+        def from_pretrained(model_name):
+            assert model_name == "Qwen/Qwen3-8B"
+            return tokenizer
+
+    def get_training_chat_template(value, /):
+        assert value is tokenizer
+        return "{% generation %}assistant{% endgeneration %}"
+
+    transformers = ModuleType("transformers")
+    transformers.AutoTokenizer = AutoTokenizer
+    trl = ModuleType("trl")
+    trl.__path__ = []
+    chat_utils = ModuleType("trl.chat_template_utils")
+    chat_utils.get_training_chat_template = get_training_chat_template
+    monkeypatch.setitem(sys.modules, "transformers", transformers)
+    monkeypatch.setitem(sys.modules, "trl", trl)
+    monkeypatch.setitem(sys.modules, "trl.chat_template_utils", chat_utils)
+
+    prepared = prepare_training_tokenizer("Qwen/Qwen3-8B")
+
+    assert prepared.chat_template.startswith("{% set enable_thinking = false %}")
+    assert "{% generation %}" in prepared.chat_template
 
 
 def test_training_writes_complete_manifest_and_requires_explicit_matching_resume(tmp_path):
@@ -98,7 +133,13 @@ def test_training_writes_complete_manifest_and_requires_explicit_matching_resume
     (output / "run_manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
     checkpoint = output / "checkpoint-1"
     checkpoint.mkdir()
-    for name in ("trainer_state.json", "optimizer.pt", "scheduler.pt", "rng_state.pth"):
+    for name in (
+        "trainer_state.json",
+        "optimizer.pt",
+        "scheduler.pt",
+        "rng_state_0.pth",
+        "rng_state_1.pth",
+    ):
         (checkpoint / name).write_bytes(b"state")
     best.rename(tmp_path / "old-best")
     resumed = run_sft_training(
@@ -116,3 +157,25 @@ def test_training_writes_complete_manifest_and_requires_explicit_matching_resume
     )
     assert resumed == best
     assert backend.requests[-1].resume_checkpoint == checkpoint
+
+
+def test_nonzero_rank_does_not_reject_manifest_just_written_by_rank_zero(tmp_path):
+    cfg = load_sft_config("configs/sft.yaml")
+    output = tmp_path / "distributed-run"
+    output.mkdir()
+    (output / "run_manifest.json").write_text('{"status":"running"}', encoding="utf-8")
+    backend = FakeBackend()
+
+    result = run_sft_training(
+        cfg,
+        _bundle(),
+        train_size=500,
+        output_dir=output,
+        best_dir=tmp_path / "distributed-run-best",
+        backend=backend,
+        world_size=2,
+        rank=1,
+    )
+
+    assert result == tmp_path / "distributed-run-best"
+    assert len(backend.requests) == 1

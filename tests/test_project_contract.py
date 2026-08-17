@@ -22,9 +22,10 @@ def test_python_and_training_contract_are_declared():
     for pin in (
         "torch==2.8.0",
         "transformers==4.57.6",
-        "trl==0.28.0",
+        "trl==1.3.0",
         "peft==0.18.1",
         "accelerate==1.12.0",
+        "datasets==4.7.0",
     ):
         assert pin in sft_pins
 

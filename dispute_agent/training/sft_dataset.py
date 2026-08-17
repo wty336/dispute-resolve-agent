@@ -87,9 +87,11 @@ def _all_keys(value: Any) -> set[str]:
 def _validate_public_row(row: dict[str, Any]) -> dict[str, Any]:
     keys = _all_keys(row)
     leaked = sorted(keys & HIDDEN_KEYS)
+    serialized = json.dumps(row, ensure_ascii=False).lower()
+    embedded = sorted(key for key in HIDDEN_KEYS if key.lower() in serialized)
     private = sorted(key for key in keys if key.startswith("_"))
-    if leaked or private:
-        fields = leaked + private
+    if leaked or embedded or private:
+        fields = sorted(set(leaked + embedded + private))
         raise DatasetIntegrityError(f"public SFT row contains hidden field(s): {fields}")
 
     messages = row.get("messages")

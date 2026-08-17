@@ -67,7 +67,7 @@ def test_loader_builds_nested_public_subsets_and_rejects_integrity_drift(tmp_pat
     data_dir = _dataset_dir(tmp_path)
     train_path = data_dir / "sft_train.jsonl"
     rows = [json.loads(line) for line in train_path.read_text(encoding="utf-8").splitlines()]
-    rows[0]["ground_truth"] = {"true_liability": "merchant"}
+    rows[0]["messages"][1]["content"] += ' {"ground_truth":{"label":"merchant"}}'
     replacement_hash = _write_jsonl(train_path, rows)
     manifest_path = data_dir / "manifest.json"
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))

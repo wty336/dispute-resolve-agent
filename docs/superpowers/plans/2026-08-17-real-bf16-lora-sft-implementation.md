@@ -6,7 +6,9 @@
 
 **Architecture:** Keep dataset integrity, tokenizer preflight, TRL/PEFT integration, and run orchestration in separate modules. The local machine exercises three high-risk seams with lightweight fakes; the server alone loads the real Qwen3 tokenizer/model and runs two-GPU training.
 
-**Tech Stack:** Python 3.11, Pydantic 2, Hugging Face Datasets, Transformers 4.57.6, TRL 0.28.0, PEFT 0.18.1, Accelerate 1.12.0, PyTorch 2.8.0 BF16, pytest.
+**Tech Stack:** Python 3.11, Pydantic 2, Hugging Face Datasets 4.7.0, Transformers 4.57.6, TRL 1.3.0, PEFT 0.18.1, Accelerate 1.12.0, PyTorch 2.8.0 BF16, pytest.
+
+> **Verification corrections applied during implementation:** TRL was raised from 0.28.0 to 1.3.0 because Qwen3 generation-marker patching for `assistant_only_loss=True` landed in TRL 1.2 and is present in 1.3; Datasets therefore moved to 4.7.0. The final code also accepts Qwen3's empty `<think></think>` control block while rejecting non-empty reasoning, recognizes distributed `rng_state_0.pth` / `rng_state_1.pth` checkpoints, and limits output-directory ownership checks to rank 0 to avoid DDP races. The executable code and tests are authoritative where older snippets below differ.
 
 ---
 
@@ -81,7 +83,7 @@ Extend `tests/test_project_contract.py` inside its existing test:
     for pin in (
         "torch==2.8.0",
         "transformers==4.57.6",
-        "trl==0.28.0",
+        "trl==1.3.0",
         "peft==0.18.1",
         "accelerate==1.12.0",
     ):
@@ -110,7 +112,7 @@ Add this optional dependency group to `pyproject.toml` without changing the exis
 sft = [
   "torch>=2.8,<2.9",
   "transformers>=4.57,<4.58",
-  "trl>=0.28,<0.29",
+  "trl>=1.3,<1.4",
   "peft>=0.18,<0.19",
   "accelerate>=1.12,<1.13",
 ]
@@ -121,10 +123,10 @@ Create `constraints/sft.txt`:
 ```text
 torch==2.8.0
 transformers==4.57.6
-trl==0.28.0
+trl==1.3.0
 peft==0.18.1
 accelerate==1.12.0
-datasets==4.4.1
+datasets==4.7.0
 tokenizers==0.22.2
 ```
 
@@ -839,7 +841,7 @@ def test_training_writes_complete_manifest_and_requires_explicit_matching_resume
     (output / "run_manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
     checkpoint = output / "checkpoint-1"
     checkpoint.mkdir()
-    for name in ("trainer_state.json", "optimizer.pt", "scheduler.pt", "rng_state.pth"):
+    for name in ("trainer_state.json", "optimizer.pt", "scheduler.pt", "rng_state_0.pth", "rng_state_1.pth"):
         (checkpoint / name).write_bytes(b"state")
     best.rename(tmp_path / "old-best")
     resumed = run_sft_training(
@@ -965,7 +967,7 @@ def prepare_training_tokenizer(model_name: str):
     from trl.chat_template_utils import get_training_chat_template
 
     tokenizer = AutoTokenizer.from_pretrained(model_name)
-    template = get_training_chat_template(processing_class=tokenizer) or tokenizer.chat_template
+    template = get_training_chat_template(tokenizer) or tokenizer.chat_template
     if not template or "{% generation %}" not in template or "{% endgeneration %}" not in template:
         raise RuntimeError("Qwen training template lacks assistant generation markers")
     tokenizer.chat_template = "{% set enable_thinking = false %}\n" + template
@@ -1062,7 +1064,7 @@ class RunError(RuntimeError):
     pass
 
 
-REQUIRED_CHECKPOINT_FILES = ("trainer_state.json", "optimizer.pt", "scheduler.pt", "rng_state.pth")
+REQUIRED_CHECKPOINT_FILES = ("trainer_state.json", "optimizer.pt", "scheduler.pt")
 
 
 def _now() -> str:
@@ -1087,6 +1089,10 @@ def _resume_checkpoint(output_dir: Path, value: str | None) -> Path | None:
     except (ValueError, FileNotFoundError) as exc:
         raise RunError("resume checkpoint must be inside the run output directory") from exc
     missing = [name for name in REQUIRED_CHECKPOINT_FILES if not (candidate / name).is_file()]
+    has_single_rng = (candidate / "rng_state.pth").is_file()
+    has_two_rank_rng = all((candidate / f"rng_state_{rank}.pth").is_file() for rank in range(2))
+    if not has_single_rng and not has_two_rank_rng:
+        missing.append("rng_state.pth or rng_state_{0,1}.pth")
     if missing:
         raise RunError(f"resume checkpoint is incomplete: {missing}")
     return candidate
@@ -1132,13 +1138,13 @@ def run_sft_training(
     resume = _resume_checkpoint(output, resume_from_checkpoint) if resume_from_checkpoint else None
     current_fingerprint = _fingerprint(config, bundle, train_size)
 
-    if resume is None and output.exists() and any(output.iterdir()):
+    if rank == 0 and resume is None and output.exists() and any(output.iterdir()):
         raise RunError("output directory is non-empty; use explicit resume")
-    if resume is None and best.exists():
+    if rank == 0 and resume is None and best.exists():
         raise RunError("best adapter directory already exists")
-    if staging.exists():
+    if rank == 0 and staging.exists():
         raise RunError("adapter staging directory exists; archive it before retrying")
-    if resume is not None:
+    if rank == 0 and resume is not None:
         if not existing_manifest.is_file():
             raise RunError("resume requires run_manifest.json")
         previous = json.loads(existing_manifest.read_text(encoding="utf-8"))

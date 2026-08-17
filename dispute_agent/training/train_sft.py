@@ -81,7 +81,6 @@ REQUIRED_CHECKPOINT_FILES = (
     "trainer_state.json",
     "optimizer.pt",
     "scheduler.pt",
-    "rng_state.pth",
 )
 
 
@@ -118,6 +117,12 @@ def _resume_checkpoint(output_dir: Path, value: str | None) -> Path | None:
     except (ValueError, FileNotFoundError) as exc:
         raise RunError("resume checkpoint must be inside the run output directory") from exc
     missing = [name for name in REQUIRED_CHECKPOINT_FILES if not (candidate / name).is_file()]
+    has_single_rng = (candidate / "rng_state.pth").is_file()
+    has_two_rank_rng = all(
+        (candidate / f"rng_state_{rank}.pth").is_file() for rank in range(2)
+    )
+    if not has_single_rng and not has_two_rank_rng:
+        missing.append("rng_state.pth or rng_state_{0,1}.pth")
     if missing:
         raise RunError(f"resume checkpoint is incomplete: {missing}")
     return candidate
@@ -168,23 +173,24 @@ def run_sft_training(
     )
     current_fingerprint = _fingerprint(config, bundle, train_size)
 
-    if resume is None and output.exists() and any(output.iterdir()):
-        raise RunError("output directory is non-empty; use explicit resume")
-    if resume is None and best.exists():
-        raise RunError("best adapter directory already exists")
-    if staging.exists():
-        raise RunError("adapter staging directory exists; archive it before retrying")
-    if resume is not None:
-        if not existing_manifest.is_file():
-            raise RunError("resume requires run_manifest.json")
-        try:
-            previous = json.loads(existing_manifest.read_text(encoding="utf-8"))
-        except json.JSONDecodeError as exc:
-            raise RunError("resume manifest is not valid JSON") from exc
-        if previous.get("fingerprint") != current_fingerprint:
-            raise RunError("resume configuration or dataset does not match the original run")
-        if best.exists():
-            raise RunError("remove or archive the old best adapter before resume")
+    if rank == 0:
+        if resume is None and output.exists() and any(output.iterdir()):
+            raise RunError("output directory is non-empty; use explicit resume")
+        if resume is None and best.exists():
+            raise RunError("best adapter directory already exists")
+        if staging.exists():
+            raise RunError("adapter staging directory exists; archive it before retrying")
+        if resume is not None:
+            if not existing_manifest.is_file():
+                raise RunError("resume requires run_manifest.json")
+            try:
+                previous = json.loads(existing_manifest.read_text(encoding="utf-8"))
+            except json.JSONDecodeError as exc:
+                raise RunError("resume manifest is not valid JSON") from exc
+            if previous.get("fingerprint") != current_fingerprint:
+                raise RunError("resume configuration or dataset does not match the original run")
+            if best.exists():
+                raise RunError("remove or archive the old best adapter before resume")
 
     spec = build_trainer_spec(config, output, world_size, max_steps)
     manifest: dict[str, Any] = {

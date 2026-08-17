@@ -90,7 +90,7 @@ def prepare_training_tokenizer(model_name: str):
     from trl.chat_template_utils import get_training_chat_template
 
     tokenizer = AutoTokenizer.from_pretrained(model_name)
-    template = get_training_chat_template(processing_class=tokenizer) or tokenizer.chat_template
+    template = get_training_chat_template(tokenizer) or tokenizer.chat_template
     if not template or "{% generation %}" not in template or "{% endgeneration %}" not in template:
         raise RuntimeError("Qwen training template lacks assistant generation markers")
     tokenizer.chat_template = "{% set enable_thinking = false %}\n" + template
