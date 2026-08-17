@@ -6,6 +6,12 @@ __pycache__/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+.pytest_cache/
+pytest-cache-files-*/
+
+# Local scratch / temp directories
+.tmp_tests/
+tmp*/
 
 # uv local caches / interpreters
 .uv_cache/
