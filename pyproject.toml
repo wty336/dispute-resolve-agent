@@ -18,6 +18,13 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest>=8.4,<9", "pytest-asyncio>=1.1,<2", "httpx>=0.28,<1"]
+sft = [
+  "torch>=2.8,<2.9",
+  "transformers>=4.57,<4.58",
+  "trl>=0.28,<0.29",
+  "peft>=0.18,<0.19",
+  "accelerate>=1.12,<1.13",
+]
 train = [
   "torch==2.8.0",
   "torchvision==0.23.0",

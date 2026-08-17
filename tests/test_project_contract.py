@@ -17,3 +17,17 @@ def test_python_and_training_contract_are_declared():
         "openai-agents==0.6.0",
     ):
         assert pin in pins
+
+    sft_pins = (ROOT / "constraints/sft.txt").read_text("utf-8")
+    for pin in (
+        "torch==2.8.0",
+        "transformers==4.57.6",
+        "trl==0.28.0",
+        "peft==0.18.1",
+        "accelerate==1.12.0",
+    ):
+        assert pin in sft_pins
+
+    sft_extra = project["project"]["optional-dependencies"]["sft"]
+    assert any(item.startswith("trl") for item in sft_extra)
+    assert not any(item.startswith(("vllm", "verl", "agentlightning")) for item in sft_extra)
