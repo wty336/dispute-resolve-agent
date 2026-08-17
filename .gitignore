@@ -1,0 +1,38 @@
+# Python / packaging
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# uv local caches / interpreters
+.uv_cache/
+.uv_python/
+
+# Generated data and training outputs
+data/generated/
+checkpoints/
+wandb/
+artifacts/**/*.parquet
+artifacts/**/raw/
+artifacts/**/checkpoints/
+
+# Model weights and binaries
+*.safetensors
+*.bin
+*.pt
+*.pth
+*.onnx
+*.gguf
+
+# Secrets
+.env
+*.key
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
