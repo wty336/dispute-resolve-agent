@@ -1,8 +1,7 @@
-"""Agentic GRPO dispute resolution agent package.
+"""电商纠纷判责 Agent 包。
 
-Modules are organized by domain, data, tools, environment, rewards, agent,
-training, evaluation, and API.  Legacy single-step protocol modules are not
-imported here.
+模块按领域、数据、工具、环境、奖励、Agent、训练、评估和 API 组织。
+这里不会导入旧的单步协议模块。
 """
 from . import agent, data, domain, environment, evaluation, rewards, tools, training
 

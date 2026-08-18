@@ -1,4 +1,4 @@
-"""Deterministic dataset split manifests with strict fact-instance isolation."""
+"""带严格事实实例隔离的确定性数据集切分清单。"""
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -44,7 +44,7 @@ class DatasetManifest:
 
 
 def _scale_counts(counts: dict[str, int], target: int) -> dict[str, int]:
-    """Scale a dict of counts to an exact target using largest remainder."""
+    """使用最大余数法将计数字典缩放到精确目标值。"""
     total = sum(counts.values())
     if total <= 0 or target <= 0:
         return {name: 0 for name in counts}
@@ -62,10 +62,10 @@ def build_dataset_manifest(
     counts: dict[str, int] | None = None,
     fixture_size: int | None = None,
 ) -> DatasetManifest:
-    """Build a deterministic manifest.
+    """构建确定性清单。
 
-    When ``fixture_size`` is provided, all full-size counts are scaled down
-    proportionally so the total is exactly ``fixture_size``.
+    提供 ``fixture_size`` 时，所有完整规模计数都会按比例缩小，使总数恰好
+    等于 ``fixture_size``。
     """
     counts = dict(DEFAULT_COUNTS if counts is None else counts)
     if fixture_size is not None:
@@ -82,7 +82,7 @@ def build_dataset_manifest(
 
     ood_ids = splits["ood_test"].fact_instance_ids
     ood_counts = _scale_counts(OOD_BUCKETS, len(ood_ids))
-    # Ensure ood buckets never exceed the actual ood split size.
+    # 确保 OOD 桶数量不会超过实际 OOD 划分大小。
     ood_cursor = 0
     for bucket, bucket_count in list(ood_counts.items()):
         ood_counts[bucket] = min(bucket_count, len(ood_ids) - ood_cursor)

@@ -1,4 +1,4 @@
-"""Unified evaluation runner and fair-protocol resolved runs."""
+"""统一评估运行器和公平协议的 resolved run。"""
 from __future__ import annotations
 
 from dataclasses import dataclass, field

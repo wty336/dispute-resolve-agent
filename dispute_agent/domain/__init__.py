@@ -1,8 +1,7 @@
-"""Domain contracts for the dispute resolution agent.
+"""纠纷判责 Agent 的领域契约。
 
-This package contains the public observation, hidden ground truth, terminal
-decision schema, and centralized policy constants.  Ground truth fields are
-never serialized into the public observation or agent messages.
+本包包含公开观测、隐藏真值、终局决策 schema 和集中式策略常量。真值字段
+绝不会被序列化到公开观测或 Agent 消息中。
 """
 from .policies import (
     HARD_FAILURE_REWARD,

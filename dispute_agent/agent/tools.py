@@ -1,4 +1,4 @@
-"""OpenAI Agents SDK function tools for the dispute runtime."""
+"""纠纷运行时使用的 OpenAI Agents SDK 函数工具。"""
 from __future__ import annotations
 
 from agents import function_tool
@@ -8,7 +8,7 @@ from dispute_agent.domain.schemas import Decision, Escalation
 
 
 def build_agent_tools(episode, allowed_tools: set[str] | None = None) -> list:
-    """Build episode-bound investigation tools and always expose submission."""
+    """构建绑定 episode 的调查工具，并始终暴露提交工具。"""
     builders = {
         "check_logistics": _check_logistics_tool,
         "check_buyer_history": _check_buyer_history_tool,
@@ -77,7 +77,7 @@ def _submit_decision_tool(episode):
         liability: str | None = None,
         compensation: float | None = None,
     ) -> str:
-        """提交最终判责或人工升级决策。action 为 decide 或 escalate。"""
+        """提交最终判责或人工升级决策；action 为 decide 或 escalate。"""
         if action == "decide":
             if liability is None or compensation is None:
                 raise ValueError("decide 必须提供 liability 和 compensation")

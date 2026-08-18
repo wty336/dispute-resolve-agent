@@ -1,7 +1,6 @@
-"""Structured synthetic dispute fact generator.
+"""结构化合成纠纷事实生成器。
 
-The generator first samples hidden ground truth, then renders a public
-observation.  It never writes hidden fields into the public observation.
+生成器先采样隐藏真值，再渲染公开观测；绝不会把隐藏字段写入公开观测。
 """
 from __future__ import annotations
 
@@ -32,8 +31,7 @@ ITEMS = [
 
 CLAIM_TYPES = ["quality", "not_as_described", "damaged", "not_received", "aftersales"]
 
-# These combinations are held out from normal generation and used only by the
-# OOD unseen-combination bucket.
+# 这些组合不会参与常规生成，只用于 OOD 未见组合桶。
 RESERVED_OOD_COMBINATIONS = (
     ("not_received", Liability.BUYER, "high"),
     ("damaged", Liability.NONE, "high"),
@@ -79,7 +77,7 @@ def _scaled_counts(counts: dict[str, int], target: int) -> dict[str, int]:
 
 
 def plan_sft_profiles(count: int, seed: int) -> list[SFTProfile]:
-    """Create a deterministic direct/multi-tool/edge-case SFT mixture."""
+    """创建确定性的 direct/multi-tool/edge-case SFT 混合数据。"""
     counts = _scaled_counts(SFT_CATEGORY_COUNTS, count)
     profiles: list[SFTProfile] = [SFTProfile(category="direct") for _ in range(counts["direct"])]
     for index in range(counts["multi_tool"]):
@@ -109,7 +107,7 @@ def _instance_rng(seed: int, index: int) -> random.Random:
 
 
 def fact_fingerprint(instance: FactInstance) -> str:
-    """Hash the structured facts while excluding IDs and language rendering."""
+    """对结构化事实计算哈希，同时排除 ID 和语言渲染内容。"""
     payload = {
         "item_name": instance.observation.item_name,
         "order_amount": instance.observation.order_amount,
@@ -145,7 +143,7 @@ def generate_fact_instances(
     language_shift: bool = False,
     tool_noise: bool = False,
 ) -> list[FactInstance]:
-    """Generate ``n`` deterministic fact instances."""
+    """生成 ``n`` 个确定性的事实实例。"""
     instances: list[FactInstance] = []
     for offset in range(n):
         index = start_id + offset
@@ -185,9 +183,8 @@ def generate_fact_instances(
         evidence_id = f"chat:{index}"
         merchant_fault = true_liability in {Liability.MERCHANT, Liability.SPLIT}
         buyer_fault = true_liability in {Liability.BUYER, Liability.SPLIT}
-        # Public intake evidence is informative but imperfect.  Keeping both
-        # false-positive and false-negative observations prevents a sentence
-        # template from becoming a hidden-liability lookup table.
+        # 公开受理证据有参考价值但并不完美。保留假阳性和假阴性观测，避免句式
+        # 模板退化成隐藏责任的查表规则。
         observed_merchant_fault = rng.random() < (0.78 if merchant_fault else 0.22)
         observed_buyer_fault = rng.random() < (0.78 if buyer_fault else 0.22)
         merchant_cue = rng.choice(

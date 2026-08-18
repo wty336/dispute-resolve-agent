@@ -1,4 +1,4 @@
-"""Strict assistant-only preprocessing and template preflight for SFT."""
+"""严格的 assistant-only 预处理与 SFT 模板预检。"""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -7,7 +7,7 @@ from typing import Any, Iterable
 
 
 class SFTPreflightError(ValueError):
-    """Raised when the tokenizer cannot prove safe assistant-only training."""
+    """tokenizer 无法证明 assistant-only 训练安全时抛出。"""
 
 
 @dataclass(frozen=True)
@@ -23,7 +23,7 @@ def preprocess_example(
     tokenizer: Any,
     max_length: int,
 ) -> dict[str, list[int]]:
-    """Render one trace without truncation and mask every non-assistant token."""
+    """无截断地渲染一个 trace，并屏蔽所有非 assistant token。"""
 
     try:
         encoded = tokenizer.apply_chat_template(
@@ -133,7 +133,7 @@ def _audit_template(tokenizer: Any, max_length: int) -> None:
 def preflight_dataset(
     rows: Iterable[dict[str, Any]], tokenizer: Any, max_length: int
 ) -> PreflightReport:
-    """Audit the template and fully validate every selected public row."""
+    """审计模板，并完整校验所有选中的公开数据行。"""
 
     _audit_template(tokenizer, max_length)
     checked_rows = 0

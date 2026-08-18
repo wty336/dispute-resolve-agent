@@ -1,4 +1,4 @@
-"""Auditable Agent Lightning/verl GRPO runtime with lazy GPU dependencies."""
+"""带惰性 GPU 依赖的可审计 Agent Lightning/verl GRPO 运行时。"""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -33,7 +33,7 @@ PACKAGE_EXPECTATIONS = {
 
 
 class GRPORuntimeError(RuntimeError):
-    """Raised when a GRPO run would be unsafe or unauditable."""
+    """GRPO 运行不安全或不可审计时抛出。"""
 
 
 @dataclass(frozen=True)
@@ -118,7 +118,7 @@ def _provenance_target_modules(manifest: dict[str, Any]) -> str | None:
 
 
 def validate_input_adapter(adapter_dir: str | Path, config: GRPOConfig) -> dict[str, Any]:
-    """Validate PEFT metadata, immutable weights, and all-linear provenance."""
+    """校验 PEFT 元数据、不可变权重和 all-linear 来源证明。"""
     adapter = Path(adapter_dir)
     if not adapter.is_dir():
         raise GRPORuntimeError(f"input adapter directory is missing: {adapter}")
@@ -389,7 +389,7 @@ def run_grpo_training(
     dry_run: bool = False,
     validate_adapter: bool | None = None,
 ) -> GRPOTrainingResult:
-    """Prepare or execute one auditable Agent Lightning/verl run."""
+    """准备或执行一次可审计的 Agent Lightning/verl 运行。"""
     if validate_adapter is None:
         validate_adapter = not dry_run
     try:

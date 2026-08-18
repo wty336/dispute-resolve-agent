@@ -1,4 +1,4 @@
-"""Fixed-seed stratified bootstrap for evaluation metrics."""
+"""用于评估指标的固定种子分层 bootstrap。"""
 from __future__ import annotations
 
 import random
@@ -14,7 +14,7 @@ def bootstrap_metric(
     seed: int = 20260817,
     ci: float = 0.95,
 ) -> dict[str, float]:
-    """Return ``{"lower": ..., "upper": ..., "mean": ...}`` for a metric."""
+    """返回某个指标的 ``{"lower": ..., "upper": ..., "mean": ...}``。"""
     rng = random.Random(seed)
     n = len(predictions)
     if n == 0:

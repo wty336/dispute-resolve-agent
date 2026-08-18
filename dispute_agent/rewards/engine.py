@@ -1,8 +1,7 @@
-"""Auditable rule-based reward engine for training.
+"""用于训练的可审计规则奖励引擎。
 
-The training reward never imports business utility and never reads an oracle
-tool-information value.  It only uses hidden ground truth (liability,
-reasonable compensation range, escalation risk) plus agent-visible state.
+训练奖励不会导入业务效用，也不会读取工具信息的 oracle 价值。它只使用隐藏
+真值（责任、合理赔付区间、升级风险）以及 Agent 可见状态。
 """
 from __future__ import annotations
 
@@ -38,7 +37,7 @@ class RewardResult(BaseModel):
 
 
 class RewardEngine:
-    """Compute the training reward for one finished episode."""
+    """计算一个已结束 episode 的训练奖励。"""
 
     def score(self, episode) -> RewardResult:
         decision = episode.terminal_decision
@@ -125,7 +124,7 @@ class RewardEngine:
         return 1.0
 
     def _escalation_quality_score(self, decision: Escalation, gt, episode) -> float:
-        # Structured, non-LLM risk-rule quality score.
+        # 基于结构化规则、无需调用大模型的风险质量评分。
         high_risk = getattr(gt, "risk_level", "medium") == "high"
         evidence_conflict = "冲突" in decision.reason or "证据" in decision.reason
         if high_risk or evidence_conflict:

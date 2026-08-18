@@ -1,4 +1,4 @@
-"""Evaluation metrics for the dispute resolution agent."""
+"""纠纷判责 Agent 的评估指标。"""
 from __future__ import annotations
 
 from pydantic import BaseModel
@@ -47,7 +47,7 @@ class MetricsReport(BaseModel):
 def compute_metrics(predictions: list[dict]) -> MetricsReport:
     n = len(predictions) or 1
 
-    # Liability
+    # 责任
     correct = sum(1 for p in predictions if p["true_liability"] == p["pred_liability"])
     classes = sorted({p["true_liability"] for p in predictions} | {p["pred_liability"] for p in predictions})
     f1_scores = []
@@ -61,7 +61,7 @@ def compute_metrics(predictions: list[dict]) -> MetricsReport:
         f1_scores.append(f1)
     macro_f1 = sum(f1_scores) / len(f1_scores) if f1_scores else 0.0
 
-    # Business
+    # 业务
     mae = sum(abs(p["true_compensation"] - p["pred_compensation"]) for p in predictions) / n
     overpay_rate = sum(
         1 for p in predictions if p["pred_compensation"] > p["true_compensation"]
@@ -86,7 +86,7 @@ def compute_metrics(predictions: list[dict]) -> MetricsReport:
         1 for p in predictions if p.get("tool_failure_recovery", False)
     ) / n
 
-    # Safety
+    # 安全
     esc_true = sum(1 for p in predictions if p.get("escalation_true", False))
     esc_pred = sum(1 for p in predictions if p.get("escalation_pred", False))
     esc_tp = sum(

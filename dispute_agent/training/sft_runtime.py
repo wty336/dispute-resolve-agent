@@ -1,4 +1,4 @@
-"""TRL/PEFT runtime kept lazy so local contract checks stay lightweight."""
+"""保持惰性的 TRL/PEFT 运行时，让本地契约检查保持轻量。"""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -98,7 +98,7 @@ def prepare_training_tokenizer(model_name: str):
 
 
 class RealSFTBackend:
-    """Two-process CUDA backend for formal BF16 LoRA training."""
+    """正式 BF16 LoRA 训练使用的双进程 CUDA 后端。"""
 
     def __init__(self) -> None:
         from accelerate import PartialState

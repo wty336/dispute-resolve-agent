@@ -1,4 +1,4 @@
-"""Minimal FastAPI demo for the dispute resolution agent."""
+"""纠纷判责 Agent 的精简版 FastAPI 演示。"""
 from __future__ import annotations
 
 import time

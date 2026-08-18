@@ -1,4 +1,4 @@
-"""Unified evaluation metrics, bootstrap, and runner."""
+"""统一的评估指标、bootstrap 与运行器。"""
 from .bootstrap import bootstrap_metric
 from .metrics import MetricsReport, compute_metrics
 from .runner import ResolvedRun, resolve_runs

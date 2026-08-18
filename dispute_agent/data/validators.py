@@ -1,4 +1,4 @@
-"""Validation helpers for synthetic data quality and leakage safety."""
+"""合成数据质量与泄漏安全校验辅助函数。"""
 from __future__ import annotations
 
 import json

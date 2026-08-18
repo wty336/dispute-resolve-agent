@@ -1,4 +1,4 @@
-"""Training adapters: Agent Lightning rollout and SFT/GRPO support."""
+"""训练适配器：Agent Lightning rollout 以及 SFT/GRPO 支持。"""
 from .grpo_config import GRPOConfig, load_grpo_config
 from .grpo_dataset import EpisodeSource, GRPODatasetBundle, GRPODatasetError, load_grpo_dataset
 from .lightning_agent import build_lightning_agent, run_dispute_rollout

@@ -1,4 +1,4 @@
-"""Configuration and orchestration for TRL BF16 LoRA SFT."""
+"""TRL BF16 LoRA SFT 的配置与编排。"""
 from __future__ import annotations
 
 from dataclasses import asdict
@@ -74,7 +74,7 @@ def load_sft_config(path: str | Path = "configs/sft.yaml") -> SFTConfig:
 
 
 class RunError(RuntimeError):
-    """Raised when a run would overwrite or mismatch auditable artifacts."""
+    """运行会覆盖或不匹配可审计产物时抛出。"""
 
 
 REQUIRED_CHECKPOINT_FILES = (
@@ -159,7 +159,7 @@ def run_sft_training(
     git_commit: str = "unknown",
     environment: dict[str, Any] | None = None,
 ) -> Path:
-    """Run or explicitly resume one auditable SFT job."""
+    """运行或显式恢复一次可审计的 SFT 任务。"""
 
     output = Path(output_dir)
     best = Path(best_dir)

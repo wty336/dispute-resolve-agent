@@ -1,7 +1,6 @@
-"""GRPO collapse monitoring.
+"""GRPO 崩溃监控。
 
-The monitor pauses training when the ratio of zero-variance groups in a recent
-window exceeds a configured threshold.
+当最近窗口中零方差组的比例超过配置阈值时，监控器会暂停训练。
 """
 from __future__ import annotations
 

@@ -1,8 +1,7 @@
-"""Offline business utility model.
+"""离线业务效用模型。
 
-This module is intentionally separate from the training reward.  It computes a
-fixed, auditable long-term value formula for evaluation only and is never used
-as a training reward.
+本模块与训练奖励刻意分离。它只为评估计算固定、可审计的长期价值公式，绝不
+用作训练奖励。
 """
 from __future__ import annotations
 
@@ -37,7 +36,7 @@ def score_business_utility(
     decision: Decision | Escalation,
     config: BusinessUtilityConfig,
 ) -> BusinessUtility:
-    """Score a terminal decision with the offline business utility formula."""
+    """使用离线业务效用公式为终局决策评分。"""
     if decision.action == "escalate":
         oracle_raw = _oracle_raw(case, config)
         raw = oracle_raw - config.manual_review_cost - config.review_delay_cost

@@ -1,8 +1,7 @@
-"""Local runtime tracing and trainable-span selection.
+"""本地运行时追踪和可训练 span 选择。
 
-OpenAI Agents SDK tracing is disabled for cloud export.  The local recorder
-stores runtime events (tools, guardrails, state transitions) but only ProxyLLM
-model spans are declared trainable.
+OpenAI Agents SDK tracing 已关闭云端导出。本地记录器会保存运行时事件（工具、
+护栏、状态转换），但只有 ProxyLLM 模型 span 会被声明为可训练。
 """
 from __future__ import annotations
 
@@ -32,7 +31,7 @@ class RuntimeTrace:
 
 
 def select_trainable_spans(trace: RuntimeTrace, model_resource: str = "main_llm") -> list[TrainableSpan]:
-    """Select ProxyLLM spans that belong to the given model resource."""
+    """选择属于指定模型资源的 ProxyLLM span。"""
     return [
         span
         for span in trace.spans
@@ -41,7 +40,7 @@ def select_trainable_spans(trace: RuntimeTrace, model_resource: str = "main_llm"
 
 
 class RuntimeTraceRecorder:
-    """Records non-trainable runtime events and trainable proxy spans."""
+    """记录不可训练的运行时事件和可训练的 proxy span。"""
 
     def __init__(self, namespace: str = "training") -> None:
         self.namespace = namespace

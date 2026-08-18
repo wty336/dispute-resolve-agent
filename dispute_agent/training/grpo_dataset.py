@@ -1,4 +1,4 @@
-"""Manifest-verified GRPO tasks and isolated Episode reconstruction."""
+"""经清单校验的 GRPO 任务与隔离式 episode 重建。"""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -12,12 +12,12 @@ from dispute_agent.environment import EpisodeState
 
 
 class GRPODatasetError(ValueError):
-    """Raised when frozen GRPO data is incomplete, changed, or unsafe."""
+    """冻结的 GRPO 数据不完整、被修改或不安全时抛出。"""
 
 
 @dataclass(frozen=True)
 class EpisodeSource:
-    """Reconstruct a fresh, private environment for every rollout."""
+    """为每个 rollout 重建全新的私有环境。"""
 
     observations: dict[str, DisputeObservation]
     ground_truth: dict[str, DisputeGroundTruth]

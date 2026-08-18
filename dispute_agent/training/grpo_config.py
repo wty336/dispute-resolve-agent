@@ -1,4 +1,4 @@
-"""Strict project config and Agent Lightning/verl config rendering."""
+"""严格的项目配置以及 Agent Lightning/verl 配置渲染。"""
 from __future__ import annotations
 
 from pathlib import Path

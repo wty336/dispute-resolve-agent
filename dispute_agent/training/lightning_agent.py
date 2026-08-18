@@ -1,4 +1,4 @@
-"""Dependency-light dispute rollout core with a lazy Agent Lightning binding."""
+"""轻依赖的纠纷 rollout 核心，并惰性绑定 Agent Lightning。"""
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping
@@ -41,7 +41,7 @@ async def run_dispute_rollout(
     reward_engine: RewardEngine | None = None,
     annotation_emitter: Callable[[dict[str, object]], None] | None = None,
 ) -> float:
-    """Run one isolated episode and return exactly one scalar reward."""
+    """运行一个隔离的 episode，并只返回一个标量奖励。"""
     case_id = task.get("case_id")
     scenario_id = task.get("scenario_id")
     curriculum_phase = task.get("curriculum_phase")
@@ -92,7 +92,7 @@ async def run_dispute_rollout(
             raise
         decision = None
 
-    # A custom runtime may return a terminal decision without mutating the episode.
+    # 自定义 runtime 可能返回终局决策，但不修改 episode。
     if episode.terminal_decision is None and decision is not None and hasattr(decision, "action"):
         episode.submit(decision)
 
@@ -126,7 +126,7 @@ def build_lightning_agent(
     *,
     agl_module: object | None = None,
 ):
-    """Build the real Agent Lightning rollout wrapper without heavy imports."""
+    """在不引入重量级依赖的情况下构建真实的 Agent Lightning rollout 封装。"""
     agl = agl_module
     if agl is None:
         import agentlightning as agl

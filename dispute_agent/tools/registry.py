@@ -1,8 +1,7 @@
-"""Tool registry for the dispute resolution agent.
+"""纠纷判责 Agent 的工具注册表。
 
-The registry owns tool argument validation, deterministic simulation, caching,
-and interaction with the episode state machine.  Only the four investigation
-tools are registered; ``submit_decision`` is handled by the agent runtime.
+注册表负责工具参数校验、确定性模拟、缓存以及与 episode 状态机交互。这里只
+注册四个调查工具；``submit_decision`` 由 Agent 运行时处理。
 """
 from __future__ import annotations
 
@@ -34,7 +33,7 @@ def _canonical_json(value: dict) -> str:
 
 
 class ToolRegistry:
-    """Deterministic registry bound to a case id and a group seed."""
+    """绑定 case id 和 group seed 的确定性注册表。"""
 
     def __init__(self, case_id: str, case_seed: str | int | None = None) -> None:
         self.case_id = case_id

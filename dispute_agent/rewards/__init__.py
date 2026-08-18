@@ -1,4 +1,4 @@
-"""Auditable training rewards and offline business utility."""
+"""可审计训练奖励与离线业务效用。"""
 from .business_utility import (
     BusinessUtility,
     BusinessUtilityConfig,

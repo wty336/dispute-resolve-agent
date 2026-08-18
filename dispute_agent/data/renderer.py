@@ -1,7 +1,7 @@
-"""Deterministic template renderer for synthetic disputes.
+"""合成纠纷的确定性模板渲染器。
 
-The renderer uses standard OpenAI chat messages: assistant ``tool_calls`` and
-``role=tool`` messages.  Tool results are never disguised as user messages.
+渲染器使用标准 OpenAI chat message：assistant ``tool_calls`` 和
+``role=tool`` 消息。工具结果绝不会伪装成 user 消息。
 """
 from __future__ import annotations
 
@@ -40,7 +40,7 @@ def render_sft_trace(
     tool_result_overrides: dict[int, str] | None = None,
     decision: Decision | Escalation | None = None,
 ) -> list[dict]:
-    """Render a native tool-protocol SFT trace for one fact instance."""
+    """为一个事实实例渲染原生工具协议 SFT trace。"""
     messages = [
         {"role": "system", "content": SYSTEM_PROMPT},
         {"role": "user", "content": render_observation(instance)},

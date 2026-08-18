@@ -1,8 +1,7 @@
-"""Episode state machine for a single dispute resolution run.
+"""单次纠纷判责运行的 episode 状态机。
 
-The episode keeps the public observation and the hidden ground truth separate.
-Ground truth is only used by tools, rewards, and evaluation; it is never
-included in ``model_dump()`` or exposed to the agent.
+episode 将公开观测与隐藏真值分离。真值只供工具、奖励和评估使用，绝不会
+包含在 ``model_dump()`` 中，也不会暴露给 Agent。
 """
 from __future__ import annotations
 
@@ -29,7 +28,7 @@ class InvalidActionCounts:
 
 
 class EpisodeState:
-    """Public, mutable state for one agent episode."""
+    """一个 Agent episode 的公开可变状态。"""
 
     def __init__(
         self,

@@ -1,9 +1,8 @@
-"""Public and hidden domain schemas.
+"""公开与隐藏领域 schema。
 
-The public observation and the hidden ground truth intentionally share only
-``case_id``.  Any new field added to ``DisputeObservation`` must not leak a
-hidden ground-truth attribute; the leakage test in
-``tests/leakage/test_hidden_state.py`` enforces this.
+公开观测与隐藏真值有意只共享 ``case_id``。向 ``DisputeObservation`` 添加新字段
+时不得泄漏隐藏真值属性；``tests/leakage/test_hidden_state.py`` 中的泄漏测试
+会强制检查这一点。
 """
 from __future__ import annotations
 
@@ -14,7 +13,7 @@ from pydantic import BaseModel, Field
 
 
 class Liability(str, Enum):
-    """Liability outcome used by terminal decisions and ground truth."""
+    """终局决策和真值使用的责任结果。"""
 
     MERCHANT = "merchant"
     BUYER = "buyer"
@@ -23,7 +22,7 @@ class Liability(str, Enum):
 
 
 class Evidence(BaseModel):
-    """A piece of evidence visible to the agent."""
+    """Agent 可见的一条证据。"""
 
     evidence_id: str
     type: str
@@ -33,10 +32,10 @@ class Evidence(BaseModel):
 
 
 class ToolResult(BaseModel):
-    """Result of one simulated tool call.
+    """一次模拟工具调用的结果。
 
-    ``payload`` is deliberately a plain string so tools never serialize hidden
-    ground-truth fields into agent-visible state.
+    ``payload`` 特意保持为普通字符串，确保工具不会把隐藏真值字段序列化到
+    Agent 可见状态中。
     """
 
     tool_name: str
@@ -49,7 +48,7 @@ class ToolResult(BaseModel):
 
 
 class DisputeObservation(BaseModel):
-    """Everything an agent is allowed to see for one dispute."""
+    """一个纠纷中 Agent 被允许看到的全部信息。"""
 
     case_id: str
     order_id: str
@@ -67,10 +66,10 @@ class DisputeObservation(BaseModel):
 
 
 class DisputeGroundTruth(BaseModel):
-    """Hidden facts used only by data generation, simulators, reward, and eval.
+    """仅供数据生成、模拟器、奖励和评估使用的隐藏事实。
 
-    These fields must never appear in prompts, tool arguments, tool payloads,
-    or serialized episode state.
+    这些字段绝不能出现在 prompt、工具参数、工具 payload 或序列化的 episode
+    状态中。
     """
 
     case_id: str

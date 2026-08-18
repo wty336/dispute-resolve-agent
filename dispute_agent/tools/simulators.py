@@ -1,8 +1,8 @@
-"""Deterministic tool simulators.
+"""确定性工具模拟器。
 
-Tool results are reproducible for a fixed ``(case_id, tool_name, arguments,
-case_seed)`` tuple.  The simulators may read hidden ground truth internally to
-calibrate noise, but they never place hidden labels into the returned payload.
+对于固定的 ``(case_id, tool_name, arguments, case_seed)`` 元组，工具结果可
+重复生成。模拟器可以在内部读取隐藏真值来校准噪声，但绝不会把隐藏标签放入
+返回的 payload。
 """
 from __future__ import annotations
 
@@ -44,7 +44,7 @@ def simulate_tool(
     case_seed: str | int | None,
     ground_truth: object | None = None,
 ) -> ToolResult:
-    """Return a deterministic, hidden-fact-conditioned tool result."""
+    """返回由隐藏事实条件化的确定性工具结果。"""
     args = {k: str(v) for k, v in arguments.items()}
     seed = _stable_seed(case_id, tool_name, _canonical_json(args), str(case_seed))
     rng = random.Random(seed)

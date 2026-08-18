@@ -1,8 +1,7 @@
-"""OpenAI-compatible model provider for the dispute agent.
+"""兼容 OpenAI 协议的纠纷判责 Agent 模型提供方。
 
-The provider is intentionally explicit about the base URL so training can point
-to Agent Lightning's ``main_llm`` ProxyLLM and evaluation can point to a plain
-vLLM endpoint.
+这里显式配置 base URL，训练时可指向 Agent Lightning 的 ``main_llm``
+ProxyLLM，评估时可指向普通的 vLLM endpoint。
 """
 from __future__ import annotations
 

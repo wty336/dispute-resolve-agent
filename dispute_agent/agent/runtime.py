@@ -1,8 +1,7 @@
-"""Single-agent multi-turn runtime built on OpenAI Agents SDK.
+"""基于 OpenAI Agents SDK 的单 Agent 多轮运行时。
 
-The same runtime is used for training rollouts, evaluation, and the demo API.
-It only sees public observations and tool results; hidden ground truth lives in
-the episode and is never placed in prompts or tool arguments.
+训练 rollout、评估和演示 API 使用同一套运行时。它只能看到公开观测和工具
+结果；隐藏真值保存在 episode 中，绝不会写入 prompt 或工具参数。
 """
 from __future__ import annotations
 

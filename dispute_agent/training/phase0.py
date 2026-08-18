@@ -1,4 +1,4 @@
-"""Evidence-backed Phase 0 gate model for the dual-4090 handoff."""
+"""面向双 4090 交接的、由证据支撑的 Phase 0 gate 模型。"""
 from __future__ import annotations
 
 from enum import Enum
@@ -22,7 +22,7 @@ EXPECTED_TORCH_CUDA = "12.8"
 
 
 class Phase0EvidenceError(ValueError):
-    """Raised when a report attempts to claim an unsupported gate."""
+    """报告试图宣称没有证据支持的 gate 时抛出。"""
 
 
 class GateStatus(str, Enum):
@@ -95,7 +95,7 @@ class Phase0Report(BaseModel):
 
 
 def build_fixture_report(*, output_dir: str | Path, run_id: str = "local-fixture") -> Phase0Report:
-    """Describe local preparation without pretending that GPU gates ran."""
+    """描述本地准备工作，但不假装 GPU gate 已经运行。"""
     root = Path(output_dir)
     gates = [
         GateResult(
@@ -121,7 +121,7 @@ def _count(document: dict[str, Any], name: str) -> int:
 
 
 def package_matrix_matches(package_versions: object) -> bool:
-    """Accept wheel-local suffixes while requiring every pinned base version."""
+    """允许 wheel 本地后缀，同时要求所有固定的基础版本一致。"""
     from dispute_agent.training.grpo_runtime import PACKAGE_EXPECTATIONS
 
     return isinstance(package_versions, dict) and all(
@@ -142,7 +142,7 @@ def evaluate_actual_evidence(
     checkpoint: dict[str, Any],
     reload_evidence: dict[str, Any],
 ) -> Phase0Report:
-    """Evaluate the real smoke run from independently inspectable artifacts."""
+    """根据可独立检查的产物评估真实 smoke run。"""
     from dispute_agent.training.grpo_runtime import PACKAGE_EXPECTATIONS
 
     evidence_root = Path(evidence_dir)

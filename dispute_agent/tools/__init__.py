@@ -1,4 +1,4 @@
-"""Deterministic investigation tools and the tool registry."""
+"""确定性调查工具与工具注册表。"""
 from .registry import INVESTIGATION_TOOLS, ToolCallRecord, ToolRegistry
 from .simulators import TOOL_COSTS, simulate_tool
 

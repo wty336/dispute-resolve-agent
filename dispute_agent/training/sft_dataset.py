@@ -1,4 +1,4 @@
-"""Verified loading for public SFT traces."""
+"""经校验的公开 SFT trace 加载。"""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -12,7 +12,7 @@ from dispute_agent.domain.schemas import DisputeGroundTruth
 
 
 class DatasetIntegrityError(ValueError):
-    """Raised when frozen SFT data is incomplete, changed, or unsafe."""
+    """冻结的 SFT 数据不完整、被修改或不安全时抛出。"""
 
 
 HIDDEN_KEYS = (set(DisputeGroundTruth.model_fields) - {"case_id"}) | {"ground_truth"}
@@ -104,11 +104,10 @@ def _validate_public_row(row: dict[str, Any]) -> dict[str, Any]:
 
 
 def load_sft_dataset(data_dir: str | Path, train_size: int | None) -> SFTDatasetBundle:
-    """Load manifest-verified public train/validation data.
+    """加载经清单校验的公开训练/验证数据。
 
-    Formal runs require the frozen 1500/150 corpus and choose a deterministic
-    prefix of 500, 1000, or 1500 training examples. ``None`` is reserved for
-    local fixture checks and loads all available rows.
+    正式运行要求冻结的 1500/150 语料，并从中确定性选择 500、1000 或 1500
+    条训练样本的前缀。``None`` 仅用于本地 fixture 检查，此时加载所有可用行。
     """
 
     root = Path(data_dir)

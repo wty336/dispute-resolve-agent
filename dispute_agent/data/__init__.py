@@ -1,4 +1,4 @@
-"""Synthetic data generation, rendering, splitting, and validation."""
+"""合成数据生成、渲染、切分与校验。"""
 from .generator import FactInstance, generate_fact_instances
 from .renderer import render_observation, render_sft_trace
 from .splits import DatasetManifest, HumanAudit, SplitManifest, build_dataset_manifest
