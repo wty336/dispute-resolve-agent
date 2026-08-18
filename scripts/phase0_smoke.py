@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run an honest local Phase 0 fixture or the real dual-4090 smoke gate."""
+"""运行真实的本地 Phase 0 fixture 或双 4090 smoke gate。"""
 from __future__ import annotations
 
 import argparse

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Run the frozen unified evaluation protocol.
+"""运行冻结的统一评估协议。
 
-Usage:
+用法：
     python scripts/evaluate.py --config configs/evaluation.yaml --models all --output artifacts/evaluation
 """
 from __future__ import annotations
@@ -23,7 +23,7 @@ def main() -> int:
     parser.add_argument("--output", default="artifacts/evaluation")
     args = parser.parse_args()
 
-    # Placeholder predictions until real checkpoints are available.
+    # 在真实 checkpoint 可用前使用占位预测。
     predictions = [
         {
             "true_liability": "merchant",

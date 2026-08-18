@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Independently verify a reloadable BF16 LoRA checkpoint."""
+"""独立验证可重新加载的 BF16 LoRA checkpoint。"""
 from __future__ import annotations
 
 import argparse

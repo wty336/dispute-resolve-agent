@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Generate leakage-safe synthetic dispute datasets.
+"""生成无泄漏的合成纠纷数据集。
 
-Usage:
+用法：
     python scripts/generate_data.py --seed 20260817 --output data/generated
     python scripts/generate_data.py --seed 20260817 --fixture-size 24 --output artifacts/data-smoke
     python scripts/generate_data.py --seed 20260817 --freeze-test --output data/generated

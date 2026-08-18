@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate or run Qwen3-8B BF16 LoRA SFT."""
+"""校验或运行 Qwen3-8B BF16 LoRA SFT。"""
 from __future__ import annotations
 
 import argparse

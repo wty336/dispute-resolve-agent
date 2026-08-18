@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Prepare or execute the Agent Lightning 0.3 + verl 0.5 GRPO run."""
+"""准备或执行 Agent Lightning 0.3 + verl 0.5 GRPO 运行。"""
 from __future__ import annotations
 
 import argparse
