@@ -1,4 +1,4 @@
-"""Shared fixtures for unit and integration tests."""
+"""单元测试和集成测试共用的 fixture。"""
 import json
 
 import httpx
