@@ -72,6 +72,20 @@ tests/                       # unit / integration / leakage / evaluation
 
 生成、渲染、切分和泄漏校验均有自动化测试。
 
+数据默认由确定性模板生成。需要增加买家与商家语言风格时，可显式开启 DeepSeek
+语言增强：改写模型只接收公开工单字段，不接收责任、赔付或升级人工真值；输出会经过
+JSON、事实锚点和泄漏校验，失败时回退到原始模板。增强缓存和生成数据不提交到 GitHub。
+
+```powershell
+uv pip install -e ".[dev,data]"
+$env:DEEPSEEK_API_KEY = "<your-key>"
+python scripts/generate_data.py --config configs/data.yaml --enrich-language --output-dir data/processed
+python scripts/generate_data.py --freeze-test --output data/processed
+```
+
+`--enrich-language` 默认只增强约 50% 样本，保留原始模板作为可控基线；可通过
+`--language-ratio` 调整比例。真实 API 调用前建议先使用 `--fixture-size 24` 做小批量 smoke。
+
 ## 5. SFT / GRPO 配置
 
 - 模型：`Qwen/Qwen3-8B`

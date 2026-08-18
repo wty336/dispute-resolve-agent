@@ -26,6 +26,11 @@ from dispute_agent.data.generator import (
     generate_fact_instances,
     plan_sft_profiles,
 )
+from dispute_agent.data.language_enrichment import (
+    LanguageEnrichmentRunner,
+    apply_rewrite,
+    build_deepseek_runner,
+)
 from dispute_agent.data.renderer import render_sft_trace
 from dispute_agent.data.splits import DEFAULT_COUNTS, build_dataset_manifest
 from dispute_agent.data.validators import validate_trace_messages
@@ -183,7 +188,30 @@ def _freeze_or_verify(output: Path) -> int:
     return 0
 
 
-def _build_rows(seed: int, counts: dict[str, int], fixture_size: int | None) -> dict[str, list[dict]]:
+def _enrich_instance(
+    instance: FactInstance,
+    *,
+    seed: int,
+    enricher: LanguageEnrichmentRunner | None,
+    language_ratio: float,
+) -> None:
+    if enricher is None:
+        return
+    result = enricher.enrich(instance, seed=seed, ratio=language_ratio)
+    instance.metadata["language_style"] = result.style
+    instance.metadata["language_enrichment_status"] = result.status
+    if result.rewrite is not None:
+        apply_rewrite(instance, result.rewrite)
+
+
+def _build_rows(
+    seed: int,
+    counts: dict[str, int],
+    fixture_size: int | None,
+    *,
+    enricher: LanguageEnrichmentRunner | None = None,
+    language_ratio: float = 0.5,
+) -> dict[str, list[dict]]:
     manifest = build_dataset_manifest(seed=seed, counts=counts, fixture_size=fixture_size)
     rows_by_split: dict[str, list[dict]] = {}
     cursor = 0
@@ -208,12 +236,18 @@ def _build_rows(seed: int, counts: dict[str, int], fixture_size: int | None) -> 
                 )
                 for inst in instances:
                     inst.split = split_name
+                    _enrich_instance(
+                        inst, seed=seed, enricher=enricher, language_ratio=language_ratio
+                    )
                     rows.append(_render_row(inst))
                 bucket_cursor += bucket_count
         else:
             instances = generate_fact_instances(seed, count, start_id=cursor, ood_bucket=None)
             for inst, profile in zip(instances, profiles, strict=True):
                 inst.split = split_name
+                _enrich_instance(
+                    inst, seed=seed, enricher=enricher, language_ratio=language_ratio
+                )
                 rows.append(_render_row(inst, profile))
         rows_by_split[split_name] = rows
         cursor += count
@@ -227,6 +261,9 @@ def main() -> int:
     parser.add_argument("--output", "--output-dir", dest="output", type=str, default=None)
     parser.add_argument("--fixture-size", type=int, default=None)
     parser.add_argument("--freeze-test", action="store_true")
+    parser.add_argument("--enrich-language", action="store_true")
+    parser.add_argument("--language-ratio", type=float, default=None)
+    parser.add_argument("--language-cache", type=str, default=None)
     args = parser.parse_args()
 
     config = {}
@@ -241,7 +278,39 @@ def main() -> int:
     manifest_path = output / "manifest.json"
     manifest = build_dataset_manifest(seed=seed, fixture_size=args.fixture_size)
 
-    rows_by_split = _build_rows(seed, manifest.counts, args.fixture_size)
+    language_config = config.get("language_enrichment", {}) or {}
+    enrich_language = args.enrich_language or bool(language_config.get("enabled", False))
+    language_ratio = (
+        args.language_ratio
+        if args.language_ratio is not None
+        else float(language_config.get("ratio", 0.5))
+    )
+    if not 0.0 <= language_ratio <= 1.0:
+        parser.error("--language-ratio must be between 0 and 1")
+    language_cache = None
+    enricher = None
+    if enrich_language:
+        cache_name = args.language_cache or language_config.get(
+            "cache_file", "language_enrichment_cache.jsonl"
+        )
+        language_cache = Path(cache_name)
+        if not language_cache.is_absolute():
+            language_cache = output / language_cache
+        enricher = build_deepseek_runner(
+            cache_path=language_cache,
+            model=language_config.get("model"),
+            base_url=language_config.get("base_url"),
+        )
+
+    rows_by_split = _build_rows(
+        seed,
+        manifest.counts,
+        args.fixture_size,
+        enricher=enricher,
+        language_ratio=language_ratio,
+    )
+    if enricher is not None:
+        enricher.flush_cache()
     file_hashes: dict[str, str] = {}
     for split_name, rows in rows_by_split.items():
         public_path = output / f"{split_name}.jsonl"
@@ -258,6 +327,23 @@ def main() -> int:
         _write_jsonl(hidden_path, hidden_rows)
         file_hashes[public_path.name] = _sha256_file(public_path)
         file_hashes[hidden_path.name] = _sha256_file(hidden_path)
+
+    language_report = None
+    if enricher is not None:
+        language_report = {
+            "enabled": True,
+            "ratio": language_ratio,
+            "model": enricher.model,
+            **enricher.stats,
+        }
+        language_report_path = output / "language_enrichment_report.json"
+        language_report_path.write_text(
+            json.dumps(language_report, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        file_hashes[language_report_path.name] = _sha256_file(language_report_path)
+        if language_cache is not None and language_cache.is_file() and language_cache.parent == output:
+            file_hashes[language_cache.name] = _sha256_file(language_cache)
 
     manifest_dict = {
         "seed": seed,
@@ -276,7 +362,11 @@ def main() -> int:
             for name, split in manifest.splits.items()
         },
         "file_hashes": file_hashes,
-        "generation_config": {"seed": seed, "fixture_size": args.fixture_size},
+        "generation_config": {
+            "seed": seed,
+            "fixture_size": args.fixture_size,
+            "language_enrichment": language_report,
+        },
     }
     manifest_text = json.dumps(manifest_dict, ensure_ascii=False, indent=2, sort_keys=True)
     manifest_path.write_text(manifest_text + "\n", encoding="utf-8")

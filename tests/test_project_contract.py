@@ -1,6 +1,8 @@
 from pathlib import Path
 import tomllib
 
+import yaml
+
 
 ROOT = Path(__file__).parents[1]
 
@@ -52,3 +54,16 @@ def test_python_and_training_contract_are_declared():
     sft_extra = project["project"]["optional-dependencies"]["sft"]
     assert any(item.startswith("trl") for item in sft_extra)
     assert not any(item.startswith(("vllm", "verl", "agentlightning")) for item in sft_extra)
+
+
+def test_deepseek_language_enrichment_is_optional_and_disabled_by_default():
+    project = tomllib.loads((ROOT / "pyproject.toml").read_text("utf-8"))
+    data_extra = project["project"]["optional-dependencies"]["data"]
+    assert any(item.startswith("openai") for item in data_extra)
+
+    config = yaml.safe_load((ROOT / "configs/data.yaml").read_text("utf-8"))
+    enrichment = config["language_enrichment"]
+    assert enrichment["enabled"] is False
+    assert enrichment["ratio"] == 0.5
+    assert enrichment["model"] == "deepseek-v4-flash"
+    assert enrichment["base_url"] == "https://api.deepseek.com"

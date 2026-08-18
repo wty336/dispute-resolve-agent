@@ -19,6 +19,10 @@ tmp*/
 
 # Generated data and training outputs
 data/generated/
+data/processed/
+data/processed-fixture/
+language_enrichment_cache.jsonl
+language_enrichment_report.json
 checkpoints/
 wandb/
 artifacts/**/*.parquet

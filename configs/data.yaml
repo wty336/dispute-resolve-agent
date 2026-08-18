@@ -1,2 +1,8 @@
 seed: 20260817
 output_dir: data/processed
+language_enrichment:
+  enabled: false
+  ratio: 0.5
+  model: deepseek-v4-flash
+  base_url: https://api.deepseek.com
+  cache_file: language_enrichment_cache.jsonl
