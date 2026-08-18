@@ -27,6 +27,7 @@ def test_grpo_row_contains_structured_public_observation_only():
     row = _render_row(instance)
 
     assert row["observation"] == instance.observation.model_dump(mode="json")
+    assert "messages" not in row
     serialized = json.dumps(row["observation"], ensure_ascii=False)
     for hidden in (
         "true_liability",

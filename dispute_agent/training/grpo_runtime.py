@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timezone
+import asyncio
 import hashlib
 import importlib
 import json
@@ -18,11 +19,16 @@ from dispute_agent.training.lightning_agent import build_lightning_agent
 
 
 PACKAGE_EXPECTATIONS = {
-    "agentlightning": "0.3.0",
-    "verl": "0.5.0",
-    "vllm": "0.10.2",
-    "openai-agents": "0.6.0",
     "torch": "2.8.0",
+    "torchvision": "0.23.0",
+    "transformers": "4.55.4",
+    "peft": "0.18.1",
+    "accelerate": "1.10.1",
+    "flash-attn": "2.8.3",
+    "vllm": "0.10.2",
+    "verl": "0.5.0",
+    "agentlightning": "0.3.0",
+    "openai-agents": "0.6.0",
 }
 
 
@@ -219,7 +225,10 @@ def _get(value: object, name: str, default: object = None) -> object:
 def _safe_annotations(value: object) -> dict[str, Any]:
     if not isinstance(value, dict):
         return {}
-    allowed = {"case_id", "scenario_id", "curriculum_phase", "reward", "components", "tool_call_count", "terminal"}
+    allowed = {
+        "case_id", "scenario_id", "curriculum_phase", "reward", "components",
+        "tool_call_count", "thinking_enabled", "terminal", "event", "tool_name",
+    }
     result: dict[str, Any] = {}
     for key in allowed:
         if key not in value:
@@ -236,29 +245,122 @@ def _safe_annotations(value: object) -> dict[str, Any]:
     return result
 
 
-def _export_rollouts(store: object, metrics_path: Path) -> dict[str, Any]:
-    rollouts = list(store.query_rollouts()) if hasattr(store, "query_rollouts") else []
+def _span_objects(spans: list[object]) -> list[dict[str, Any]]:
+    objects: list[dict[str, Any]] = []
+    for span in spans:
+        if _get(span, "name") != "agentlightning.object":
+            continue
+        attributes = _get(span, "attributes", {})
+        if not isinstance(attributes, dict):
+            continue
+        raw = attributes.get("agentlightning.object.json")
+        if not isinstance(raw, str):
+            continue
+        try:
+            value = json.loads(raw)
+        except json.JSONDecodeError:
+            continue
+        objects.append(_safe_annotations(value))
+    return objects
+
+
+def _span_annotations(spans: list[object]) -> dict[str, Any]:
+    annotations: dict[str, Any] = {}
+    for value in _span_objects(spans):
+        if "reward" in value:
+            annotations.update(value)
+    return annotations
+
+
+def _status_text(status: object) -> str:
+    value = getattr(status, "value", status)
+    return str(value).lower()
+
+
+def _latest_verl_checkpoint(run_dir: Path) -> Path | None:
+    checkpoints_dir = run_dir / "checkpoints"
+    candidates: list[tuple[int, Path]] = []
+    if checkpoints_dir.is_dir():
+        for candidate in checkpoints_dir.glob("global_step_*"):
+            if not candidate.is_dir():
+                continue
+            try:
+                step = int(candidate.name.removeprefix("global_step_"))
+            except ValueError:
+                continue
+            candidates.append((step, candidate))
+    return max(candidates, default=(0, None), key=lambda item: item[0])[1]
+
+
+async def _export_rollouts(
+    store: object,
+    metrics_path: Path,
+    *,
+    find_final_reward,
+    find_reward_spans,
+) -> dict[str, Any]:
+    rollouts = list(await store.query_rollouts()) if hasattr(store, "query_rollouts") else []
     rewards: list[float] = []
+    tool_call_counts: list[int] = []
     failures = 0
+    model_span_count = 0
+    object_span_count = 0
+    tool_event_span_count = 0
+    reward_span_count = 0
+    multi_turn_rollout_count = 0
+    tool_rollout_count = 0
+    thinking_enabled_count = 0
+    single_reward_rollout_count = 0
     metrics_path.parent.mkdir(parents=True, exist_ok=True)
     with metrics_path.open("w", encoding="utf-8") as handle:
         for rollout in rollouts:
             rollout_id = _get(rollout, "rollout_id", _get(rollout, "id", "unknown"))
-            spans = list(store.query_spans(rollout_id)) if hasattr(store, "query_spans") else []
-            status = _get(rollout, "status", "unknown")
-            reward_value = _get(rollout, "final_reward", _get(rollout, "reward"))
+            spans = list(await store.query_spans(rollout_id)) if hasattr(store, "query_spans") else []
+            status = _status_text(_get(rollout, "status", "unknown"))
+            reward_value = find_final_reward(spans)
+            reward_spans = list(find_reward_spans(spans))
+            reward_span_count += len(reward_spans)
+            if len(reward_spans) == 1:
+                single_reward_rollout_count += 1
+            span_objects = _span_objects(spans)
+            annotations = _span_annotations(spans)
+            rollout_tool_event_spans = sum(
+                1 for value in span_objects if value.get("event") == "tool_call"
+            )
+            tool_event_span_count += rollout_tool_event_spans
+            rollout_object_spans = sum(
+                1 for span in spans if _get(span, "name") == "agentlightning.object"
+            )
+            object_span_count += rollout_object_spans
+            rollout_model_spans = sum(
+                1 for span in spans if _get(span, "name") == "openai.chat.completion"
+            )
+            model_span_count += rollout_model_spans
+            if rollout_model_spans >= 2:
+                multi_turn_rollout_count += 1
             if isinstance(reward_value, (int, float)):
                 rewards.append(float(reward_value))
+            tool_call_count = annotations.get("tool_call_count")
+            if isinstance(tool_call_count, int) and not isinstance(tool_call_count, bool):
+                tool_call_counts.append(tool_call_count)
+                if tool_call_count > 0:
+                    tool_rollout_count += 1
+            if annotations.get("thinking_enabled") is True:
+                thinking_enabled_count += 1
             if status not in {"completed", "success", "succeeded"}:
                 failures += 1
             record = {
                 "rollout_id": str(rollout_id),
                 "status": status,
                 "final_reward": reward_value,
-                "annotations": _safe_annotations(_get(rollout, "annotations", {})),
+                "annotations": annotations,
                 "span_count": len(spans),
-                "started_at": _get(rollout, "started_at"),
-                "completed_at": _get(rollout, "completed_at"),
+                "model_span_count": rollout_model_spans,
+                "object_span_count": rollout_object_spans,
+                "tool_event_span_count": rollout_tool_event_spans,
+                "reward_span_count": len(reward_spans),
+                "started_at": _get(rollout, "start_time", _get(rollout, "started_at")),
+                "completed_at": _get(rollout, "end_time", _get(rollout, "completed_at")),
             }
             handle.write(json.dumps(record, ensure_ascii=False) + "\n")
     return {
@@ -266,6 +368,15 @@ def _export_rollouts(store: object, metrics_path: Path) -> dict[str, Any]:
         "completed_count": len(rollouts) - failures,
         "failure_count": failures,
         "reward_count": len(rewards),
+        "reward_span_count": reward_span_count,
+        "model_span_count": model_span_count,
+        "object_span_count": object_span_count,
+        "tool_event_span_count": tool_event_span_count,
+        "multi_turn_rollout_count": multi_turn_rollout_count,
+        "tool_rollout_count": tool_rollout_count,
+        "thinking_enabled_count": thinking_enabled_count,
+        "single_reward_rollout_count": single_reward_rollout_count,
+        "tool_call_mean": statistics.fmean(tool_call_counts) if tool_call_counts else None,
         "reward_mean": statistics.fmean(rewards) if rewards else None,
         "reward_std": statistics.pstdev(rewards) if len(rewards) > 1 else 0.0 if rewards else None,
     }
@@ -305,6 +416,7 @@ def run_grpo_training(
     run_dir = plan.run_dir
     manifest_path = run_dir / "run_manifest.json"
     run_dir.mkdir(parents=True, exist_ok=True)
+    resume_checkpoint: Path | None = None
     if not dry_run:
         if request.resume:
             if not manifest_path.is_file():
@@ -312,6 +424,10 @@ def run_grpo_training(
             previous = json.loads(manifest_path.read_text(encoding="utf-8"))
             if previous.get("fingerprint") != plan.fingerprint:
                 raise GRPORuntimeError("resume configuration, data, or adapter does not match original run")
+            resume_checkpoint = _latest_verl_checkpoint(run_dir)
+            if resume_checkpoint is None:
+                raise GRPORuntimeError("resume requires an existing VERL global_step_* checkpoint")
+            plan.verl_config["trainer"]["resume_mode"] = "auto"
         elif any(run_dir.iterdir()):
             raise GRPORuntimeError("output directory is non-empty; use --resume")
     _write_yaml(run_dir / "resolved_config.yaml", plan.config.model_dump(mode="python"))
@@ -337,6 +453,7 @@ def run_grpo_training(
         },
         "resolved_config": plan.config.model_dump(mode="python"),
         "packages": PACKAGE_EXPECTATIONS,
+        "resumed_from": str(resume_checkpoint.resolve()) if resume_checkpoint else None,
     }
     _write_json_atomic(manifest_path, manifest)
 
@@ -359,7 +476,19 @@ def run_grpo_training(
             train_dataset=plan.bundle.train_tasks,
             val_dataset=plan.bundle.val_tasks,
         )
-        summary = _export_rollouts(store, run_dir / "metrics" / "rollouts.jsonl")
+        final_reward_finder = getattr(agl, "find_final_reward", None)
+        reward_spans_finder = getattr(agl, "find_reward_spans", None)
+        if final_reward_finder is None or reward_spans_finder is None:
+            from agentlightning.emitter import find_final_reward, find_reward_spans
+
+            final_reward_finder = find_final_reward
+            reward_spans_finder = find_reward_spans
+        summary = asyncio.run(_export_rollouts(
+            store,
+            run_dir / "metrics" / "rollouts.jsonl",
+            find_final_reward=final_reward_finder,
+            find_reward_spans=reward_spans_finder,
+        ))
         _write_json_atomic(run_dir / "metrics" / "summary.json", summary)
         manifest.update(status="completed", completed_at=_now(), metrics=summary)
         _write_json_atomic(manifest_path, manifest)

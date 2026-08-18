@@ -1,3 +1,5 @@
+from types import SimpleNamespace
+
 import pytest
 
 from dispute_agent.agent.runtime import DisputeRuntime
@@ -44,6 +46,10 @@ async def test_runtime_passes_turn_and_token_budgets(monkeypatch, episode):
 
     monkeypatch.setattr("dispute_agent.agent.runtime.Runner.run", fake_run)
     monkeypatch.setattr("dispute_agent.agent.runtime.create_chat_model", lambda **_: object())
+    monkeypatch.setattr(
+        "dispute_agent.agent.runtime.Agent",
+        lambda **kwargs: SimpleNamespace(model_settings=kwargs["model_settings"]),
+    )
     runtime = DisputeRuntime(base_url="http://fake", api_key="EMPTY")
 
     await runtime.run(episode, max_rounds=3, max_tokens_per_round=384)

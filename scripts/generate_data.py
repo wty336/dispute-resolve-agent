@@ -119,18 +119,19 @@ def _render_row(instance: FactInstance, profile: SFTProfile | None = None) -> di
         "case_id": instance.case_id,
         "split": instance.split,
         "ood_bucket": instance.ood_bucket,
-        "messages": render_sft_trace(
-            instance,
-            tool_plan=tool_plan,
-            tool_result_overrides=tool_result_overrides,
-            decision=_make_decision(instance, profile.tool_names),
-        ),
         "_ground_truth": instance.ground_truth.model_dump(mode="json"),
         "_fact_fingerprint": fact_fingerprint(instance),
         "metadata": metadata,
     }
     if instance.split in {"grpo_train", "grpo_val"}:
         row["observation"] = instance.observation.model_dump(mode="json")
+    else:
+        row["messages"] = render_sft_trace(
+            instance,
+            tool_plan=tool_plan,
+            tool_result_overrides=tool_result_overrides,
+            decision=_make_decision(instance, profile.tool_names),
+        )
     return row
 
 
@@ -287,7 +288,9 @@ def main() -> int:
         "total_rows": len(all_rows),
         "duplicate_fact_fingerprints": sum(count - 1 for count in fingerprint_counts.values() if count > 1),
         "trace_validation_errors": sum(
-            len(validate_trace_messages(row["messages"])) for row in all_rows
+            len(validate_trace_messages(row["messages"]))
+            for row in all_rows
+            if "messages" in row
         ),
         "sft_category_counts": dict(
             Counter(row["metadata"]["sft_category"] for row in rows_by_split["sft_train"])

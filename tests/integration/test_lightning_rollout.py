@@ -111,3 +111,23 @@ async def test_missing_submission_maps_to_hard_failure(episode_source, monkeypat
         runtime_factory=factory,
     )
     assert reward == -1.5
+
+
+@pytest.mark.asyncio
+async def test_agents_sdk_max_turns_maps_to_hard_failure(episode_source):
+    from agents.exceptions import MaxTurnsExceeded
+
+    class TurnLimitedRuntime:
+        async def run(self, episode, **kwargs):
+            raise MaxTurnsExceeded("Maximum turns exceeded")
+
+    llm = SimpleNamespace(endpoint="http://127.0.0.1:8000/v1", api_key=None, model="Qwen/Qwen3-8B")
+    reward = await run_dispute_rollout(
+        {"case_id": "case-001", "scenario_id": "fact-001", "curriculum_phase": 1},
+        llm,
+        episode_source=episode_source,
+        config=load_grpo_config("configs/grpo.yaml"),
+        runtime_factory=lambda **_: TurnLimitedRuntime(),
+    )
+
+    assert reward == -1.5

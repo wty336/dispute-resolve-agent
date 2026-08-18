@@ -10,12 +10,13 @@ from dispute_agent.training.grpo_runtime import GRPORunRequest, run_grpo_trainin
 class FakeStore:
     def __init__(self):
         self.rollouts = []
+        self.spans = {}
 
-    def query_rollouts(self):
+    async def query_rollouts(self):
         return self.rollouts
 
-    def query_spans(self, rollout_id):
-        return []
+    async def query_spans(self, rollout_id):
+        return self.spans.get(rollout_id, [])
 
 
 class FakeTrainer:
@@ -26,6 +27,43 @@ class FakeTrainer:
     def fit(self, agent, *, train_dataset, val_dataset):
         fake_agl.fit_train_dataset = train_dataset
         fake_agl.fit_val_dataset = val_dataset
+        self.store.rollouts = [SimpleNamespace(
+            rollout_id="rollout-1",
+            status="succeeded",
+            start_time=1.0,
+            end_time=2.0,
+        )]
+        self.store.spans = {
+            "rollout-1": [
+                SimpleNamespace(name="openai.chat.completion", attributes={}),
+                SimpleNamespace(name="openai.chat.completion", attributes={}),
+                SimpleNamespace(
+                    name="agentlightning.object",
+                    attributes={
+                        "agentlightning.object.json": json.dumps({
+                            "case_id": "case-0", "event": "tool_call", "tool_name": "check_logistics"
+                        })
+                    },
+                ),
+                SimpleNamespace(
+                    name="agentlightning.object",
+                    attributes={
+                        "agentlightning.object.json": json.dumps({
+                            "case_id": "case-0",
+                            "reward": 0.75,
+                            "components": {"liability": 1.0},
+                            "tool_call_count": 2,
+                            "thinking_enabled": True,
+                            "terminal": True,
+                        })
+                    },
+                ),
+                SimpleNamespace(
+                    name="agentlightning.annotation",
+                    attributes={"agentlightning.reward.0.value": 0.75},
+                ),
+            ]
+        }
 
 
 class FakeAlgorithm:
@@ -53,6 +91,14 @@ fake_agl = SimpleNamespace(
     LlmProxyTraceToTriplet=FakeAdapter,
     rollout=lambda fn: fn,
     emit_object=lambda value: value,
+    find_final_reward=lambda spans: next(
+        span.attributes["agentlightning.reward.0.value"]
+        for span in reversed(spans)
+        if "agentlightning.reward.0.value" in span.attributes
+    ),
+    find_reward_spans=lambda spans: [
+        span for span in spans if "agentlightning.reward.0.value" in span.attributes
+    ],
     verl_configs=[],
 )
 
@@ -69,7 +115,7 @@ def _write_data(root: Path) -> Path:
                 "item_name": "测试商品", "order_amount": 100.0, "claim_type": "damaged",
                 "buyer_claim": "商品破损", "buyer_requested_amount": 50.0, "merchant_response": "发货前完好",
                 "chat_log": ["买家：商品破损"], "evidence": [{"evidence_id": "chat:0", "type": "聊天记录", "description": "反馈", "source": "buyer", "visible": True}],
-            }, "messages": [], "metadata": {},
+            }, "metadata": {},
         },
         "grpo_val.jsonl": {
             "fact_instance_id": "fact-1", "case_id": "case-1", "split": "grpo_val",
@@ -78,7 +124,7 @@ def _write_data(root: Path) -> Path:
                 "item_name": "测试商品", "order_amount": 100.0, "claim_type": "damaged",
                 "buyer_claim": "商品破损", "buyer_requested_amount": 50.0, "merchant_response": "发货前完好",
                 "chat_log": ["买家：商品破损"], "evidence": [{"evidence_id": "chat:1", "type": "聊天记录", "description": "反馈", "source": "buyer", "visible": True}],
-            }, "messages": [], "metadata": {},
+            }, "metadata": {},
         },
     }
     hidden = {
@@ -113,11 +159,26 @@ def test_real_run_builds_verl_and_trainer(tmp_path, monkeypatch):
     )
 
     assert fake_agl.verl_configs[0]["actor_rollout_ref"]["rollout"]["n"] == 4
+    assert fake_agl.verl_configs[0]["trainer"]["save_freq"] == 1
     assert fake_agl.trainer_kwargs["n_runners"] == 1
     assert fake_agl.trainer_kwargs["tracer"].kind == "otel"
     assert fake_agl.trainer_kwargs["adapter"].kind == "llm_proxy_triplet"
     assert len(fake_agl.fit_train_dataset) == 1
     assert result.manifest_path.exists()
+    summary = json.loads(
+        (result.run_dir / "metrics" / "summary.json").read_text(encoding="utf-8")
+    )
+    assert summary["reward_count"] == 1
+    assert summary["reward_mean"] == 0.75
+    assert summary["reward_span_count"] == 1
+    assert summary["model_span_count"] == 2
+    assert summary["tool_call_mean"] == 2.0
+    assert summary["multi_turn_rollout_count"] == 1
+    assert summary["tool_rollout_count"] == 1
+    assert summary["thinking_enabled_count"] == 1
+    assert summary["object_span_count"] == 2
+    assert summary["tool_event_span_count"] == 1
+    assert summary["single_reward_rollout_count"] == 1
 
 
 def test_dry_run_writes_plan_without_gpu_imports(tmp_path, monkeypatch):
@@ -148,6 +209,62 @@ def test_max_steps_is_injected_into_verl_config(tmp_path):
         validate_adapter=False,
     )
     assert fake_agl.verl_configs[-1]["trainer"]["total_training_steps"] == 25
+
+
+def test_resume_enables_verl_auto_resume_from_existing_checkpoint(tmp_path):
+    fake_agl.verl_configs.clear()
+    data_dir = _write_data(tmp_path / "data")
+    output_root = tmp_path / "outputs"
+    request = GRPORunRequest(
+        Path("configs/grpo.yaml"), data_dir, output_root, "resume-run", "smoke", 1
+    )
+    first = run_grpo_training(
+        request,
+        agl_module=fake_agl,
+        validate_adapter=False,
+    )
+    checkpoint = first.run_dir / "checkpoints" / "global_step_1"
+    checkpoint.mkdir(parents=True)
+
+    run_grpo_training(
+        GRPORunRequest(
+            Path("configs/grpo.yaml"),
+            data_dir,
+            output_root,
+            "resume-run",
+            "smoke",
+            1,
+            resume=True,
+        ),
+        agl_module=fake_agl,
+        validate_adapter=False,
+    )
+
+    assert fake_agl.verl_configs[-1]["trainer"]["resume_mode"] == "auto"
+
+
+def test_resume_rejects_run_without_checkpoint(tmp_path):
+    data_dir = _write_data(tmp_path / "data")
+    output_root = tmp_path / "outputs"
+    request = GRPORunRequest(
+        Path("configs/grpo.yaml"), data_dir, output_root, "empty-resume", "smoke", 1
+    )
+    run_grpo_training(request, agl_module=fake_agl, validate_adapter=False)
+
+    with pytest.raises(Exception, match="checkpoint"):
+        run_grpo_training(
+            GRPORunRequest(
+                Path("configs/grpo.yaml"),
+                data_dir,
+                output_root,
+                "empty-resume",
+                "smoke",
+                1,
+                resume=True,
+            ),
+            agl_module=fake_agl,
+            validate_adapter=False,
+        )
 
 
 def test_invalid_input_adapter_writes_failed_manifest(tmp_path):

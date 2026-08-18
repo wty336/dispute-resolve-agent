@@ -4,6 +4,8 @@ from __future__ import annotations
 from collections.abc import Callable, Mapping
 from typing import Any
 
+from agents.exceptions import MaxTurnsExceeded
+
 from dispute_agent.agent.runtime import build_runtime
 from dispute_agent.rewards.engine import RewardEngine
 from dispute_agent.training.grpo_config import GRPOConfig, load_grpo_config
@@ -83,6 +85,8 @@ async def run_dispute_rollout(
             max_rounds=max_rounds,
             max_tokens_per_round=max_tokens_per_round,
         )
+    except MaxTurnsExceeded:
+        decision = None
     except RuntimeError as exc:
         if not _is_terminal_runtime_error(exc):
             raise
@@ -96,6 +100,12 @@ async def run_dispute_rollout(
     result = scorer.score(episode)
     total = float(result.total)
     if annotation_emitter is not None:
+        for call in episode.tool_calls:
+            annotation_emitter({
+                "case_id": case_id,
+                "event": "tool_call",
+                "tool_name": call.name,
+            })
         annotation_emitter({
             "case_id": case_id,
             "scenario_id": scenario_id,
@@ -103,6 +113,7 @@ async def run_dispute_rollout(
             "reward": total,
             "components": result.components.model_dump(mode="json"),
             "tool_call_count": len(episode.tool_calls),
+            "thinking_enabled": True,
             "terminal": episode.terminal_decision is not None,
         })
     return total
